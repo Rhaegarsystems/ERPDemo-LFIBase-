@@ -4,8 +4,9 @@
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.4);
+    /* Slightly lighter overlay for light mode */
+    /* backdrop-filter: blur(4px); */
     z-index: 100;
     display: flex;
     align-items: center;

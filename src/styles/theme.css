@@ -1,38 +1,55 @@
 :root {
-    /* Premium Dark Theme Palette */
-    --bg-deep: #050507;
-    --bg-primary: #0a0a0f;
-    --bg-secondary: #12121a;
-    --bg-tertiary: #1c1c26;
+    /* Light Theme Palette */
+    --bg-deep: #f8fafc;
+    /* Very light gray/white for background */
+    --bg-primary: #ffffff;
+    /* Pure white */
+    --bg-secondary: #f1f5f9;
+    /* Slate 100 */
+    --bg-tertiary: #e2e8f0;
+    /* Slate 200 */
 
-    /* Premium Gradients & Glass */
-    --gradient-primary: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-    --gradient-secondary: linear-gradient(135deg, #ec4899 0%, #f43f5e 100%);
-    --gradient-hover: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+    /* Gradients (Lighter/Fresher) */
+    --gradient-primary: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    /* Indigo to Violet */
+    --gradient-secondary: linear-gradient(135deg, #db2777 0%, #e11d48 100%);
+    /* Pink to Rose */
+    --gradient-hover: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
 
-    --glass-bg: rgba(5, 5, 10, 0.85);
-    /* Darker and less hazy */
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --backdrop-blur: 16px;
-    /* Slightly stronger blur for depth */
+    --glass-bg: rgba(255, 255, 255, 0.95);
+    /* Almost opaque */
+    --glass-border: #cbd5e1;
+    /* Light border (Slate 300) */
+    --border: #e2e8f0;
+    /* Slightly lighter border for general elements */
+    --border-hover: #cbd5e1;
 
-    /* Typography */
-    --text-primary: #ffffff;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
+    --backdrop-blur: 0px;
+    /* REMOVED BLUR */
+
+    /* Typography (Dark for Light Mode) */
+    --text-primary: #0f172a;
+    /* Slate 900 */
+    --text-secondary: #475569;
+    /* Slate 600 */
+    --text-muted: #94a3b8;
+    /* Slate 400 */
 
     /* Accents */
-    --primary: #8b5cf6;
-    /* Violet */
-    --accent: #ec4899;
-    /* Pink */
-    --success: #10b981;
-    --warning: #f59e0b;
-    --danger: #ef4444;
+    --primary: #6366f1;
+    /* Indigo 500 */
+    --accent: #db2777;
+    /* Pink 600 */
+    --success: #059669;
+    /* Emerald 600 */
+    --warning: #d97706;
+    /* Amber 600 */
+    --danger: #dc2626;
+    /* Red 600 */
 
-    /* Glows */
-    --glow-primary: 0 0 20px rgba(139, 92, 246, 0.3);
-    --glow-accent: 0 0 20px rgba(236, 72, 153, 0.3);
+    /* Glows -> Shadows for Light Mode */
+    --glow-primary: 0 4px 12px rgba(99, 102, 241, 0.25);
+    --glow-accent: 0 4px 12px rgba(236, 72, 153, 0.25);
 
     /* Spacing */
     --spacing-xs: 0.25rem;
@@ -51,6 +68,56 @@
     /* Transitions */
     --transition-fast: 200ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-smooth: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme='dark'] {
+    /* Dark Theme Palette (No Blur, Clean/Flat) */
+    --bg-deep: #0f172a;
+    /* Slate 900 */
+    --bg-primary: #1e293b;
+    /* Slate 800 */
+    --bg-secondary: #334155;
+    /* Slate 700 */
+    --bg-tertiary: #475569;
+    /* Slate 600 */
+
+    /* Gradients (Darker/Richer) */
+    --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    --gradient-secondary: linear-gradient(135deg, #ec4899 0%, #f43f5e 100%);
+    --gradient-hover: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+
+    --glass-bg: #1e293b;
+    /* Solid color for dark mode, no transparency */
+    --glass-border: #334155;
+    /* Slate 700 */
+    --border: #334155;
+    --border-hover: #475569;
+
+    --backdrop-blur: 0px;
+
+    /* Typography (Light for Dark Mode) */
+    --text-primary: #f8fafc;
+    /* Slate 50 */
+    --text-secondary: #cbd5e1;
+    /* Slate 300 */
+    --text-muted: #94a3b8;
+    /* Slate 400 */
+
+    /* Accents */
+    --primary: #818cf8;
+    /* Indigo 400 */
+    --accent: #f472b6;
+    /* Pink 400 */
+    --success: #34d399;
+    /* Emerald 400 */
+    --warning: #fbbf24;
+    /* Amber 400 */
+    --danger: #ef4444;
+    /* Red 500 */
+
+    /* Shadows instead of Glows */
+    --glow-primary: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --glow-accent: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 body {

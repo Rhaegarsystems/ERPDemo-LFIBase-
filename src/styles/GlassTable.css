@@ -1,7 +1,8 @@
 .glass-table-container {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--backdrop-blur));
-    -webkit-backdrop-filter: blur(var(--backdrop-blur));
+    background: var(--bg-primary);
+    /* Use solid bg-primary instead of glass-bg for better performance */
+    /* backdrop-filter: blur(var(--backdrop-blur)); */
+    /* -webkit-backdrop-filter: blur(var(--backdrop-blur)); */
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-xl);
     padding: var(--spacing-lg);

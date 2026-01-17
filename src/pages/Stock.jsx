@@ -1,16 +1,30 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowUpRight, ArrowDownRight, RefreshCcw } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
 import GlassTable from '../components/GlassTable';
 import '../styles/PageCommon.css';
 
 const Stock = () => {
-    const data = [
-        { id: 1, item: "Steel Pipe 20mm", type: "IN", quantity: "+500", date: "2023-10-25", user: "John Doe" },
-        { id: 2, item: "Copper Wire 50m", type: "OUT", quantity: "-20", date: "2023-10-24", user: "Jane Smith" },
-        { id: 3, item: "Industrial Bolt M10", type: "ADJUST", quantity: "-5", date: "2023-10-24", user: "Admin" },
-        { id: 4, item: "Steel Pipe 20mm", type: "IN", quantity: "+200", date: "2023-10-23", user: "John Doe" },
-    ];
+    const [data, setData] = useState([]);
+
+    useEffect(() => {
+        const fetchLogs = async () => {
+            try {
+                const logs = await invoke('get_stock_logs');
+                const formatted = logs.map(log => ({
+                    ...log,
+                    item: log.item_name,
+                    type: log.type, // Ensure backend sends 'type' or 'type_' mapped correctly
+                    quantity: log.type === 'IN' ? `+${log.quantity}` : log.type === 'OUT' ? `-${log.quantity}` : `${log.quantity}`
+                }));
+                setData(formatted);
+            } catch (e) {
+                console.error("Failed to fetch stock logs", e);
+            }
+        };
+        fetchLogs();
+    }, []);
 
     const columns = [
         { header: "Date", accessor: "date" },

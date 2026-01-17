@@ -2,8 +2,8 @@
     /* Width handled by Framer Motion */
     height: 100vh;
     background: var(--glass-bg);
-    backdrop-filter: blur(var(--backdrop-blur));
-    -webkit-backdrop-filter: blur(var(--backdrop-blur));
+    /* backdrop-filter: blur(var(--backdrop-blur)); */
+    /* -webkit-backdrop-filter: blur(var(--backdrop-blur)); */
     border-right: 1px solid var(--glass-border);
     display: flex;
     flex-direction: column;

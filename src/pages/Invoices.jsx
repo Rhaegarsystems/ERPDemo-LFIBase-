@@ -1,64 +1,72 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Search, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { invoke } from '@tauri-apps/api/core';
 import GlassTable from '../components/GlassTable';
-import Modal from '../components/Modal';
+import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
+import AlertModal from '../components/AlertModal';
 import '../styles/PageCommon.css';
 
 const Invoices = () => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [data, setData] = useState([
-        { id: "INV-2023-001", client: "Acme Corp", date: "2023-10-20", due: "2023-11-20", amount: "$1,200.00", status: "Paid" },
-        { id: "INV-2023-002", client: "Globex Inc", date: "2023-10-22", due: "2023-11-22", amount: "$850.50", status: "Pending" },
-        { id: "INV-2023-003", client: "Soylent Corp", date: "2023-10-25", due: "2023-11-25", amount: "$3,400.00", status: "Overdue" },
-    ]);
+    const navigate = useNavigate();
+    const [data, setData] = useState([]);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState(null);
+    const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'success', title: '', message: '' });
 
-    const [newInvoice, setNewInvoice] = useState({
-        client: '',
-        date: '',
-        due: '',
-        amount: '',
-        status: 'Pending'
-    });
+    const fetchInvoices = async () => {
+        try {
+            const result = await invoke('get_invoices');
+            setData(result);
+        } catch (error) {
+            console.error("Failed to fetch invoices:", error);
+        }
+    };
+
+    useEffect(() => {
+        fetchInvoices();
+    }, []);
 
     const columns = [
-        {
-            header: "Invoice ID", accessor: "id", render: (id) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'monospace' }}>
-                    <FileText size={14} className="text-muted" /> {id}
-                </div>
-            )
-        },
-        { header: "Client", accessor: "client" },
+        { header: "Invoice No", accessor: "id" },
+        { header: "Client", accessor: "client_name" },
+        { header: "Vendor Code", accessor: "vendor_code" },
         { header: "Date", accessor: "date" },
-        { header: "Due Date", accessor: "due" },
-        { header: "Amount", accessor: "amount", render: (amt) => <span style={{ fontWeight: 'bold' }}>{amt}</span> },
+        { header: "Amount", accessor: "amount", render: (val) => `₹${val ? val.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '0.00'}` },
         {
-            header: "Status", accessor: "status", render: (status) => {
-                const color = status === 'Paid' ? 'success' : status === 'Overdue' ? 'danger' : 'warning';
-                return (
-                    <span className={`badge ${status.toLowerCase()}`} style={{
-                        background: `rgba(var(--${color}-rgb), 0.1)`,
-                        color: `var(--${color})`,
-                        border: `1px solid rgba(var(--${color}-rgb), 0.2)`
-                    }}>
-                        {status}
-                    </span>
-                );
-            }
+            header: "Status", accessor: "status", render: (status) => (
+                <span className={`badge ${status ? status.toLowerCase() : 'pending'}`}>
+                    {status || 'Pending'}
+                </span>
+            )
         },
     ];
 
-    const handleSave = () => {
-        // Mock Save
-        const newItem = {
-            id: `INV-2023-00${data.length + 1}`,
-            ...newInvoice,
-            amount: `$${parseFloat(newInvoice.amount).toFixed(2)}`
-        };
-        setData([...data, newItem]);
-        setIsModalOpen(false);
-        setNewInvoice({ client: '', date: '', due: '', amount: '', status: 'Pending' });
+    const showAlert = (type, title, message) => {
+        setAlertConfig({ isOpen: true, type, title, message });
+    };
+
+    const handleDelete = (item) => {
+        setItemToDelete(item);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!itemToDelete) return;
+        try {
+            await invoke('delete_invoice', { id: itemToDelete.id });
+            fetchInvoices();
+            setIsDeleteModalOpen(false);
+            setItemToDelete(null);
+            showAlert('success', 'Deleted', 'Invoice deleted.');
+        } catch (e) {
+            showAlert('error', 'Error', "Delete failed: " + e);
+        }
+    };
+
+    const handleEdit = (item) => {
+        navigate(`/invoices/edit/${item.id}`);
     };
 
     return (
@@ -74,7 +82,7 @@ const Invoices = () => {
                     </motion.h1>
                     <p className="page-subtitle">Billing and payments.</p>
                 </div>
-                <button className="btn-primary-glow" onClick={() => setIsModalOpen(true)}>
+                <button className="btn-primary-glow" onClick={() => navigate('/invoices/create')}>
                     <Plus size={18} /> New Invoice
                 </button>
             </header>
@@ -86,75 +94,31 @@ const Invoices = () => {
                 </div>
             </div>
 
-            <GlassTable columns={columns} data={data} actions={true} />
+            {data.length === 0 ? (
+                <div className="empty-state">
+                    <FileText size={64} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+                    <h3>No Invoices Found</h3>
+                    <p>Create your first invoice to get started.</p>
+                </div>
+            ) : (
+                <GlassTable columns={columns} data={data} actions={{ onEdit: handleEdit, onDelete: handleDelete }} />
+            )}
 
-            <Modal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                title="Create New Invoice"
-                actions={
-                    <>
-                        <button className="btn-ghost" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                        <button className="btn-primary-glow" onClick={handleSave}>Create Invoice</button>
-                    </>
-                }
-            >
-                <div className="form-group">
-                    <label>Client</label>
-                    <input
-                        type="text"
-                        className="form-input"
-                        value={newInvoice.client}
-                        onChange={(e) => setNewInvoice({ ...newInvoice, client: e.target.value })}
-                        placeholder="e.g. Acme Corp"
-                    />
-                </div>
-                <div className="flex gap-4" style={{ display: 'flex', gap: '1rem' }}>
-                    <div className="form-group w-full" style={{ flex: 1 }}>
-                        <label>Issue Date</label>
-                        <input
-                            type="date"
-                            className="form-input"
-                            value={newInvoice.date}
-                            onChange={(e) => setNewInvoice({ ...newInvoice, date: e.target.value })}
-                        />
-                    </div>
-                    <div className="form-group w-full" style={{ flex: 1 }}>
-                        <label>Due Date</label>
-                        <input
-                            type="date"
-                            className="form-input"
-                            value={newInvoice.due}
-                            onChange={(e) => setNewInvoice({ ...newInvoice, due: e.target.value })}
-                        />
-                    </div>
-                </div>
-                <div className="flex gap-4" style={{ display: 'flex', gap: '1rem' }}>
-                    <div className="form-group w-full" style={{ flex: 1 }}>
-                        <label>Amount ($)</label>
-                        <input
-                            type="number"
-                            step="0.01"
-                            className="form-input"
-                            value={newInvoice.amount}
-                            onChange={(e) => setNewInvoice({ ...newInvoice, amount: e.target.value })}
-                            placeholder="0.00"
-                        />
-                    </div>
-                    <div className="form-group w-full" style={{ flex: 1 }}>
-                        <label>Status</label>
-                        <select
-                            className="form-input"
-                            value={newInvoice.status}
-                            onChange={(e) => setNewInvoice({ ...newInvoice, status: e.target.value })}
-                        >
-                            <option value="Paid">Paid</option>
-                            <option value="Pending">Pending</option>
-                            <option value="Overdue">Overdue</option>
-                        </select>
-                    </div>
-                </div>
-            </Modal>
+            <DeleteConfirmationModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+                itemName={itemToDelete?.id}
+                title="Delete Invoice"
+            />
+
+            <AlertModal
+                isOpen={alertConfig.isOpen}
+                onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+                type={alertConfig.type}
+                title={alertConfig.title}
+                message={alertConfig.message}
+            />
         </div>
     );
 };

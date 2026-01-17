@@ -5,6 +5,8 @@ import Inventory from './pages/Inventory';
 import Stock from './pages/Stock';
 import Customers from './pages/Customers';
 import Invoices from './pages/Invoices';
+import Settings from './pages/Settings';
+import CreateInvoice from './pages/CreateInvoice';
 import './App.css';
 
 function App() {
@@ -17,6 +19,9 @@ function App() {
           <Route path="stock" element={<Stock />} />
           <Route path="customers" element={<Customers />} />
           <Route path="invoices" element={<Invoices />} />
+          <Route path="invoices/create" element={<CreateInvoice />} />
+          <Route path="invoices/edit/:id" element={<CreateInvoice />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
     </Router>

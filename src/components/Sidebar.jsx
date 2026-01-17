@@ -20,6 +20,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
         { name: 'Stock', path: '/stock', icon: <BoxSelect size={20} /> },
         { name: 'Customers', path: '/customers', icon: <Users size={20} /> },
         { name: 'Invoices', path: '/invoices', icon: <FileText size={20} /> },
+        { name: 'Settings', path: '/settings', icon: <Settings size={20} /> },
     ];
 
     return (

@@ -31,10 +31,10 @@ const GlassTable = ({ columns, data, actions }) => {
                             {actions && (
                                 <td>
                                     <div className="action-buttons">
-                                        <button className="icon-btn edit">
+                                        <button className="icon-btn edit" onClick={() => actions.onEdit && actions.onEdit(row)}>
                                             <Edit2 size={16} />
                                         </button>
-                                        <button className="icon-btn delete">
+                                        <button className="icon-btn delete" onClick={() => actions.onDelete && actions.onDelete(row)}>
                                             <Trash2 size={16} />
                                         </button>
                                     </div>
