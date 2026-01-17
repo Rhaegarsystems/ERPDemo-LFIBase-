@@ -1,0 +1,61 @@
+.glass-table-container {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--backdrop-blur));
+    -webkit-backdrop-filter: blur(var(--backdrop-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-lg);
+    overflow-x: auto;
+}
+
+.glass-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--text-primary);
+}
+
+.glass-table th {
+    text-align: left;
+    padding: var(--spacing-md);
+    color: var(--text-secondary);
+    font-weight: 500;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.glass-table td {
+    padding: var(--spacing-md);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.glass-table tr:last-child td {
+    border-bottom: none;
+}
+
+.glass-table tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.action-buttons {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.icon-btn {
+    padding: 6px;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+    color: var(--text-muted);
+}
+
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.icon-btn.edit:hover {
+    color: var(--primary);
+}
+
+.icon-btn.delete:hover {
+    color: var(--danger);
+}

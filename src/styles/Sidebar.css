@@ -1,0 +1,124 @@
+.sidebar {
+    /* Width handled by Framer Motion */
+    height: 100vh;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--backdrop-blur));
+    -webkit-backdrop-filter: blur(var(--backdrop-blur));
+    border-right: 1px solid var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    padding: var(--spacing-lg) var(--spacing-md);
+    /* Reduced padding */
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 50;
+    box-shadow: 20px 0 40px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    /* Hide text when collapsing */
+}
+
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--glass-border);
+    height: 70px;
+    /* Fixed height for consistency */
+}
+
+.logo-icon {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    /* Prevent squishing */
+    background: var(--gradient-primary);
+    color: white;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.25rem;
+    box-shadow: var(--glow-primary);
+}
+
+.brand-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    flex: 1;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-lg);
+    color: var(--text-secondary);
+    font-weight: 500;
+    transition: all var(--transition-fast);
+    border: 1px solid transparent;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    /* Prevent text wrapping */
+}
+
+/* Collapsed state adjustments */
+.sidebar.collapsed .nav-item {
+    justify-content: center;
+    padding: var(--spacing-md) 0;
+}
+
+.sidebar.collapsed .logo-icon {
+    margin: 0 auto;
+    /* Center logo */
+}
+
+.sidebar.collapsed .sidebar-header {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.icon-wrapper {
+    min-width: 24px;
+    /* Ensure icons don't shrink */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-primary);
+    transform: translateX(4px);
+}
+
+.nav-item.active {
+    background: var(--gradient-primary);
+    color: white;
+    box-shadow: var(--glow-primary);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-item.active svg {
+    color: white;
+}
+
+.sidebar-footer {
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--border);
+}

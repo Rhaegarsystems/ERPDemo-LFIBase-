@@ -1,0 +1,110 @@
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Remove old backdrop styles */
+
+.modal-container {
+    /* Reset previous positioning */
+    position: relative;
+    top: auto;
+    left: auto;
+    margin: 0;
+    transform: none !important;
+    /* Framework handles transforms */
+
+    z-index: 101;
+    width: 500px;
+    max-width: 90vw;
+    background: var(--bg-secondary);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    border-radius: var(--radius-xl);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Correcting positioning strategy: use flex overlay in parent or better motion props */
+/* Let's adjust component directly to wrap in overlay */
+
+.modal-header {
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-primary);
+}
+
+.close-btn {
+    color: var(--text-secondary);
+    padding: 4px;
+    border-radius: var(--radius-md);
+    transition: var(--transition-fast);
+}
+
+.close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.modal-body {
+    padding: var(--spacing-lg);
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.modal-footer {
+    padding: var(--spacing-lg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-md);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* Form Styles for within Modals */
+.form-group {
+    margin-bottom: var(--spacing-md);
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: var(--spacing-xs);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.form-input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-family: inherit;
+    transition: var(--transition-fast);
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
