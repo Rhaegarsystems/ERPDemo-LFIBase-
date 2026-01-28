@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Save, Printer, ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { Save, Printer, ArrowLeft, Plus, Trash2, Search } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
@@ -9,6 +9,8 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { toWords } from 'number-to-words';
 import AlertModal from '../components/AlertModal';
+import PartSelectorModal from '../components/PartSelectorModal';
+import CustomerSelectorModal from '../components/CustomerSelectorModal';
 import '../styles/PageCommon.css';
 
 const CreateInvoice = () => {
@@ -43,6 +45,17 @@ const CreateInvoice = () => {
     });
 
     const [totals, setTotals] = useState({ subtotal: 0, cgst: 0, sgst: 0, igst: 0, total: 0 });
+
+    // State for Part Selector Modal and New Item Form
+    const [isPartModalOpen, setIsPartModalOpen] = useState(false);
+    const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+    const [newItem, setNewItem] = useState({
+        sku: '',
+        name: '',
+        process: '',
+        qty: 1,
+        rate: 0
+    });
 
     useEffect(() => {
         const loadData = async () => {
@@ -89,24 +102,37 @@ const CreateInvoice = () => {
 
     const showAlert = (type, title, message) => setAlertConfig({ isOpen: true, type, title, message });
 
-    const handleCustomerChange = (e) => {
-        const custName = e.target.value;
-        const cust = customers.find(c => c.name === custName);
+    const handleCustomerSelect = (customer) => {
         setInvoice(prev => ({
             ...prev,
-            client_name: custName,
-            client_details: cust || null,
-            vendor_code: cust?.vendor_code || '',
-            state: cust?.state || 'Tamilnadu',
-            state_code: cust?.state_code || '33'
+            client_name: customer.name,
+            client_details: customer,
+            vendor_code: customer.vendor_code || '',
+            state: customer.state || 'Tamilnadu',
+            state_code: customer.state_code || '33'
         }));
     };
 
     const addItem = () => {
-        setInvoice(prev => ({
-            ...prev,
-            items: [...prev.items, { sku: '', name: '', process: '', qty: 1, rate: 0, amount: 0 }]
-        }));
+        const amount = (parseFloat(newItem.qty) || 0) * (parseFloat(newItem.rate) || 0);
+        if (newItem.sku || newItem.name) {
+            setInvoice(prev => ({
+                ...prev,
+                items: [...prev.items, { ...newItem, amount }]
+            }));
+            // Reset form
+            setNewItem({ sku: '', name: '', process: '', qty: 1, rate: 0 });
+        }
+    };
+
+    const handlePartSelect = (part) => {
+        setNewItem({
+            sku: part.sku,
+            name: part.name,
+            process: part.process || '',
+            qty: 1,
+            rate: part.price || 0
+        });
     };
 
     const updateItem = (index, field, value) => {
@@ -148,7 +174,11 @@ const CreateInvoice = () => {
                     po_date: invoice.po_date,
                     transport_mode: invoice.transport_mode,
                     invoice_type: invoice.invoice_type,
-                    items_json: JSON.stringify(invoice.items)
+                    items_json: JSON.stringify(invoice.items),
+                    hsn_code: invoice.hsn_code,
+                    sac_code: invoice.sac_code,
+                    state: invoice.state,
+                    state_code: invoice.state_code
                 }
             });
             showAlert('success', 'Invoice Saved', 'Invoice saved successfully.');
@@ -161,7 +191,36 @@ const CreateInvoice = () => {
     const handlePrint = async () => {
         if (!invoiceRef.current) return;
         try {
-            const canvas = await html2canvas(invoiceRef.current, { scale: 2, useCORS: true });
+            const canvas = await html2canvas(invoiceRef.current, {
+                scale: 2,
+                useCORS: true,
+                onclone: (clonedDoc) => {
+                    const noPrintEls = clonedDoc.querySelectorAll('.no-print');
+                    noPrintEls.forEach(el => el.style.display = 'none');
+
+                    // CRITICAL FIX: Replace inputs/selects with text nodes for perfect PDF rendering
+                    // This matches the appearance of Rate/Amount columns which are already plain text
+                    const inputs = clonedDoc.querySelectorAll('.table-input, .form-input');
+                    inputs.forEach(input => {
+                        const value = input.value;
+                        const span = clonedDoc.createElement('span');
+                        span.textContent = value;
+                        span.style.fontFamily = 'inherit';
+                        span.style.fontSize = 'inherit';
+                        span.style.width = '100%';
+                        span.style.display = 'inline-block';
+
+                        // Preserve text alignment (e.g., for Qty which is right-aligned)
+                        if (input.classList.contains('text-right')) {
+                            span.style.textAlign = 'right';
+                        }
+
+                        if (input.parentNode) {
+                            input.parentNode.replaceChild(span, input);
+                        }
+                    });
+                }
+            });
             const imgData = canvas.toDataURL('image/png');
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -204,10 +263,24 @@ const CreateInvoice = () => {
                     </div>
                     <div className="form-group">
                         <label>Customer</label>
-                        <select className="form-input" value={invoice.client_name} onChange={handleCustomerChange}>
-                            <option value="">-- Select --</option>
-                            {customers.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                        </select>
+                        <div
+                            onClick={() => setIsCustomerModalOpen(true)}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                padding: '0.5rem 0.75rem',
+                                background: 'var(--bg-tertiary)',
+                                border: '1px solid var(--border)',
+                                borderRadius: 'var(--radius-md)',
+                                cursor: 'pointer',
+                                color: invoice.client_name ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                minHeight: '38px'
+                            }}
+                        >
+                            <Search size={14} />
+                            <span>{invoice.client_name || 'Click to select customer...'}</span>
+                        </div>
                     </div>
                     <div className="form-group">
                         <label>Date</label>
@@ -222,33 +295,6 @@ const CreateInvoice = () => {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
                     <div className="form-group">
-                        <label>DC No</label>
-                        <input type="text" className="form-input" value={invoice.dc_no}
-                            onChange={e => setInvoice({ ...invoice, dc_no: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                        <label>DC Date</label>
-                        <input type="date" className="form-input" value={invoice.dc_date}
-                            onChange={e => setInvoice({ ...invoice, dc_date: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                        <label>PO No</label>
-                        <input type="text" className="form-input" value={invoice.po_no}
-                            onChange={e => setInvoice({ ...invoice, po_no: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                        <label>PO Date</label>
-                        <input type="date" className="form-input" value={invoice.po_date}
-                            onChange={e => setInvoice({ ...invoice, po_date: e.target.value })} />
-                    </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
-                    <div className="form-group">
-                        <label>Transport Mode</label>
-                        <input type="text" className="form-input" value={invoice.transport_mode}
-                            onChange={e => setInvoice({ ...invoice, transport_mode: e.target.value })} placeholder="By Road" />
-                    </div>
-                    <div className="form-group">
                         <label>State</label>
                         <input type="text" className="form-input" value={invoice.state}
                             onChange={e => setInvoice({ ...invoice, state: e.target.value })} />
@@ -259,35 +305,208 @@ const CreateInvoice = () => {
                             onChange={e => setInvoice({ ...invoice, state_code: e.target.value })} />
                     </div>
                     <div className="form-group">
-                        <label>Invoice Type</label>
-                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: '0.5rem' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer' }}>
-                                <input type="checkbox" checked={invoice.invoice_type === 'Sale'}
-                                    onChange={() => setInvoice({ ...invoice, invoice_type: 'Sale' })} /> Sale (HSN)
-                            </label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer' }}>
-                                <input type="checkbox" checked={invoice.invoice_type === 'Service'}
-                                    onChange={() => setInvoice({ ...invoice, invoice_type: 'Service' })} /> Service (SAC)
-                            </label>
-                        </div>
+                        <label>DC No</label>
+                        <input type="text" className="form-input" value={invoice.dc_no}
+                            onChange={e => setInvoice({ ...invoice, dc_no: e.target.value })} />
+                    </div>
+                    <div className="form-group">
+                        <label>DC Date</label>
+                        <input type="text" className="form-input" value={invoice.dc_date} placeholder="YYYY-MM-DD"
+                            onChange={e => setInvoice({ ...invoice, dc_date: e.target.value })} />
+                    </div>
+                    <div className="form-group">
+                        <label>PO No</label>
+                        <input type="text" className="form-input" value={invoice.po_no}
+                            onChange={e => setInvoice({ ...invoice, po_no: e.target.value })} />
+                    </div>
+                    <div className="form-group">
+                        <label>PO Date</label>
+                        <input type="text" className="form-input" value={invoice.po_date} placeholder="YYYY-MM-DD"
+                            onChange={e => setInvoice({ ...invoice, po_date: e.target.value })} />
                     </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
                     <div className="form-group">
-                        <label>HSN Code</label>
-                        <input type="text" className="form-input" value={invoice.hsn_code}
-                            onChange={e => setInvoice({ ...invoice, hsn_code: e.target.value })} placeholder="Enter HSN" />
+                        <label>Transport Mode</label>
+                        <input type="text" className="form-input" value={invoice.transport_mode}
+                            onChange={e => setInvoice({ ...invoice, transport_mode: e.target.value })} placeholder="By Road" />
                     </div>
+
+                    <div className="form-group">
+
+                    </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
                     <div className="form-group">
                         <label>SAC Code</label>
                         <input type="text" className="form-input" value={invoice.sac_code}
                             onChange={e => setInvoice({ ...invoice, sac_code: e.target.value })} placeholder="Enter SAC" />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', marginTop: '0.5rem' }}>
+                            <input type="checkbox" checked={invoice.invoice_type === 'Service'}
+                                onChange={() => setInvoice({ ...invoice, invoice_type: invoice.invoice_type === 'Service' ? '' : 'Service' })} /> Service (SAC)
+                        </label>
+                    </div>
+                    <div className="form-group">
+                        <label>HSN Code</label>
+                        <input type="text" className="form-input" value={invoice.hsn_code}
+                            onChange={e => setInvoice({ ...invoice, hsn_code: e.target.value })} placeholder="Enter HSN" />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', marginTop: '0.5rem' }}>
+                            <input type="checkbox" checked={invoice.invoice_type === 'Sale'}
+                                onChange={() => setInvoice({ ...invoice, invoice_type: invoice.invoice_type === 'Sale' ? '' : 'Sale' })} /> Sale (HSN)
+                        </label>
                     </div>
                 </div>
-                <div className="flex justify-end">
-                    <button className="btn-primary-glow flex items-center gap-2" onClick={addItem}><Plus size={16} /> Add Line Item</button>
+
+                {/* Inline Add Line Item Section */}
+                <div style={{ background: 'var(--bg-tertiary)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1rem', border: '1px solid var(--border)' }}>
+                    <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-primary)', fontSize: '0.9rem' }}>Add Line Item</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 80px 80px auto', gap: '0.75rem', alignItems: 'end' }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ fontSize: '0.75rem' }}>Part No. (SKU)</label>
+                            <div
+                                onClick={() => setIsPartModalOpen(true)}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    padding: '0.5rem 0.75rem',
+                                    background: 'var(--bg-secondary)',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: 'var(--radius-md)',
+                                    cursor: 'pointer',
+                                    color: newItem.sku ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                    transition: 'border-color 0.2s'
+                                }}
+                            >
+                                <Search size={14} />
+                                <span>{newItem.sku || 'Click to select part...'}</span>
+                            </div>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ fontSize: '0.75rem' }}>Part Name</label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                value={newItem.name}
+                                onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                                placeholder="Part name"
+                            />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ fontSize: '0.75rem' }}>Process</label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                value={newItem.process}
+                                onChange={(e) => setNewItem({ ...newItem, process: e.target.value })}
+                                placeholder="Process"
+                            />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ fontSize: '0.75rem' }}>Qty</label>
+                            <input
+                                type="number"
+                                className="form-input"
+                                value={newItem.qty}
+                                onChange={(e) => setNewItem({ ...newItem, qty: parseInt(e.target.value) || 1 })}
+                                placeholder="1"
+                            />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ fontSize: '0.75rem' }}>Rate</label>
+                            <input
+                                type="number"
+                                className="form-input"
+                                value={newItem.rate}
+                                onChange={(e) => setNewItem({ ...newItem, rate: parseFloat(e.target.value) || 0 })}
+                                placeholder="0.00"
+                            />
+                        </div>
+                        <button
+                            className="btn-primary-glow"
+                            style={{ height: '38px', padding: '0 1rem' }}
+                            onClick={addItem}
+                        >
+                            <Plus size={16} /> Add
+                        </button>
+                    </div>
                 </div>
-            </div>
+
+                {/* Added Line Items Section */}
+                <div style={{ background: 'var(--bg-tertiary)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1rem', border: '1px solid var(--border)' }}>
+                    <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+                        Added Line Items ({invoice.items.length})
+                    </h4>
+                    {invoice.items.length === 0 ? (
+                        <div style={{
+                            padding: '2rem',
+                            textAlign: 'center',
+                            color: 'var(--text-secondary)',
+                            background: 'var(--bg-secondary)',
+                            borderRadius: 'var(--radius-md)'
+                        }}>
+                            <p style={{ margin: 0 }}>No items added yet. Use the form above to add line items.</p>
+                        </div>
+                    ) : (
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{
+                                width: '100%',
+                                borderCollapse: 'collapse',
+                                fontSize: '0.85rem',
+                                background: 'var(--bg-secondary)',
+                                borderRadius: 'var(--radius-md)',
+                                overflow: 'hidden'
+                            }}>
+                                <thead>
+                                    <tr style={{ background: 'rgba(139, 92, 246, 0.1)' }}>
+                                        <th style={{ padding: '0.75rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem' }}>#</th>
+                                        <th style={{ padding: '0.75rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem' }}>Part No.</th>
+                                        <th style={{ padding: '0.75rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem' }}>Part Name</th>
+                                        <th style={{ padding: '0.75rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem' }}>Process</th>
+                                        <th style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem' }}>Qty</th>
+                                        <th style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem' }}>Rate</th>
+                                        <th style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem' }}>Amount</th>
+                                        <th style={{ padding: '0.75rem', textAlign: 'center', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem' }}>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {invoice.items.map((item, i) => (
+                                        <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                                            <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{i + 1}</td>
+                                            <td style={{ padding: '0.75rem', color: 'var(--primary)', fontWeight: 500 }}>{item.sku || '-'}</td>
+                                            <td style={{ padding: '0.75rem', color: 'var(--text-primary)' }}>{item.name || '-'}</td>
+                                            <td style={{ padding: '0.75rem', color: 'var(--text-primary)' }}>{item.process || '-'}</td>
+                                            <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-primary)' }}>{item.qty}</td>
+                                            <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-primary)' }}>₹{item.rate}</td>
+                                            <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--success)', fontWeight: 600 }}>₹{(item.amount || 0).toFixed(2)}</td>
+                                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                                <button
+                                                    onClick={() => removeItem(i)}
+                                                    style={{
+                                                        background: 'rgba(239, 68, 68, 0.1)',
+                                                        border: 'none',
+                                                        borderRadius: '6px',
+                                                        padding: '0.4rem',
+                                                        cursor: 'pointer',
+                                                        color: 'var(--danger)',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                    title={`Delete ${item.name || 'Item'}`}
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            </div >
 
             {/* Print Layout */}
             <div className="print-container-wrapper">
@@ -315,7 +534,7 @@ const CreateInvoice = () => {
                             <p><strong>Address:</strong> {invoice.client_details?.address || '_________________'}</p>
                             <div className="flex justify-between mt-2">
                                 <p><strong>GSTIN:</strong> {invoice.client_details?.gstin || '________'}</p>
-                                <p><strong>State:</strong> {invoice.state} ({invoice.state_code})</p>
+                                <p><strong>State:</strong> {invoice.client_details?.state || '__________'} ({invoice.client_details?.state_code || '__'})</p>
                             </div>
                         </div>
                         <div className="inv-details">
@@ -325,78 +544,87 @@ const CreateInvoice = () => {
                             <div className="row"><span>P.O. Date:</span> <span>{invoice.po_date || '-'}</span></div>
                             <div className="row"><span>Transport:</span> <span>{invoice.transport_mode || '-'}</span></div>
                             <div className="row"><span>Vendor Code:</span> <span>{invoice.vendor_code || '-'}</span></div>
+                            <div className="row"><span>State, Code:</span> <span>{invoice.state || '-'}, {invoice.state_code || '-'}</span></div>
                         </div>
                     </div>
 
                     <table className="inv-table">
                         <thead>
                             <tr>
-                                <th style={{ width: '40px' }}>S.No</th>
-                                <th style={{ width: '150px' }}>Part Name</th>
-                                <th style={{ width: '100px' }}>Part No.</th>
-                                <th style={{ width: '100px' }}>Process</th>
-                                <th style={{ width: '60px' }}>Qty</th>
-                                <th style={{ width: '80px' }}>Rate</th>
-                                <th>Amount</th>
-                                <th className="no-print" style={{ width: '30px' }}></th>
+                                <th style={{ width: '40px', textAlign: 'center' }}>S.No</th>
+                                <th style={{ width: '150px', textAlign: 'center' }}>Part Name</th>
+                                <th style={{ width: '100px', textAlign: 'center' }}>Part No.</th>
+                                <th style={{ width: '100px', textAlign: 'center' }}>Process</th>
+                                <th style={{ width: '60px', textAlign: 'center' }}>Qty</th>
+                                <th style={{ width: '80px', textAlign: 'center' }}>Rate</th>
+                                <th style={{ textAlign: 'center' }}>Amount</th>
                             </tr>
                         </thead>
                         <tbody>
                             {invoice.items.map((item, i) => (
                                 <tr key={i}>
-                                    <td>{i + 1}</td>
-                                    <td><input className="table-input" value={item.name} onChange={e => updateItem(i, 'name', e.target.value)} /></td>
-                                    <td>
-                                        <input className="table-input" list="sku-list" value={item.sku} onChange={e => updateItem(i, 'sku', e.target.value)} />
-                                        <datalist id="sku-list">{inventory.map(p => <option key={p.id} value={p.sku}>{p.name}</option>)}</datalist>
-                                    </td>
-                                    <td><input className="table-input" value={item.process} onChange={e => updateItem(i, 'process', e.target.value)} /></td>
-                                    <td><input className="table-input text-right" type="number" value={item.qty} onChange={e => updateItem(i, 'qty', e.target.value)} /></td>
-                                    <td>₹{item.rate}</td>
-                                    <td className="text-right">₹{item.amount.toFixed(2)}</td>
-                                    <td className="no-print text-center">
-                                        <button onClick={() => removeItem(i)} className="text-danger hover:bg-danger/10 p-1 rounded"><Trash2 size={14} /></button>
-                                    </td>
+                                    <td style={{ textAlign: 'center' }}>{i + 1}</td>
+                                    <td style={{ textAlign: 'center' }}>{item.name || '-'}</td>
+                                    <td style={{ textAlign: 'center' }}>{item.sku || '-'}</td>
+                                    <td style={{ textAlign: 'center' }}>{item.process || '-'}</td>
+                                    <td style={{ textAlign: 'center' }}>{item.qty}</td>
+                                    <td style={{ textAlign: 'center' }}>₹{item.rate}</td>
+                                    <td style={{ textAlign: 'center' }}>₹{(item.amount || 0).toFixed(2)}</td>
                                 </tr>
                             ))}
-                            {Array.from({ length: Math.max(0, 8 - invoice.items.length) }).map((_, i) => (
-                                <tr key={`empty-${i}`} className="empty-row"><td colSpan={8}>&nbsp;</td></tr>
+                            {Array.from({ length: Math.max(0, 15 - invoice.items.length) }).map((_, i) => (
+                                <tr key={`empty-${i}`} className="empty-row"><td colSpan={7}>&nbsp;</td></tr>
                             ))}
                         </tbody>
                     </table>
 
                     <div className="inv-footer-section">
                         <div className="left-section">
-                            {invoice.invoice_type === 'Service' ? (
-                                <p><strong>SAC CODE:</strong> {invoice.sac_code || '...........'}</p>
-                            ) : (
-                                <p><strong>HSN CODE:</strong> {invoice.hsn_code || '...........'}</p>
-                            )}
-                            <div className="amount-words">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span><strong>SAC CODE :</strong> {invoice.sac_code || '...........'}</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                        <span>(Service)</span>
+                                        <div style={{ width: '15px', height: '15px', border: '1px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {invoice.invoice_type === 'Service' && '✓'}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span><strong>HSN CODE :</strong> {invoice.hsn_code || '...........'}</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                        <span>(Sale)</span>
+                                        <div style={{ width: '15px', height: '15px', border: '1px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {invoice.invoice_type === 'Sale' && '✓'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="amount-words" style={{ marginTop: '10px' }}>
                                 <p><strong>Total Invoice Amount in Words:</strong></p>
                                 <p style={{ textTransform: 'capitalize' }}>Rupees {toWords(Math.round(totals.total))} Only</p>
+                                <p style={{ fontStyle: 'italic', fontWeight: 'bold', marginTop: '10px' }}>Received the goods in good condition</p>
                             </div>
                         </div>
                         <div className="totals-section">
                             <div className="row"><span>Total Before Tax</span><span>₹{totals.subtotal.toFixed(2)}</span></div>
                             <div className="row"><span>CGST (9%)</span><span>₹{totals.cgst.toFixed(2)}</span></div>
                             <div className="row"><span>SGST (9%)</span><span>₹{totals.sgst.toFixed(2)}</span></div>
-                            <div className="row grand-total"><span>Total After Tax</span><span>₹{totals.total.toFixed(2)}</span></div>
+                            <div className="row grand-total"><span>Total Amount</span><span>₹{totals.total.toFixed(2)}</span></div>
                         </div>
                     </div>
 
                     <div className="signature-section">
-                        <p>Received the goods in good condition</p>
-                        <div className="sign-box">
+                        <div className="sign-box" style={{ marginLeft: 'auto', marginRight: '50px' }}>
                             <p>For LITTLE FLOWER INDUSTRIES</p>
                             <br /><br />
                             <p>Authorised Signature</p>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <style>{`
+
+                <style>{`
                 .invoice-paper { background: white; color: black; width: 210mm; min-height: 297mm; padding: 10mm; margin: 0 auto; border: 1px solid #ddd; font-family: 'Times New Roman', serif; position: relative; }
                 .inv-header { text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 5px; position: relative; }
                 .logo-box { border: 2px solid #8b5cf6; color: #8b5cf6; padding: 5px; font-weight: bold; font-size: 24px; position: absolute; left: 0; top: 0; }
@@ -408,10 +636,10 @@ const CreateInvoice = () => {
                 .inv-details { font-size: 13px; }
                 .inv-details .row { display: flex; justify-content: space-between; border-bottom: 1px solid black; padding: 2px 5px; }
                 .inv-details .row:last-child { border-bottom: none; }
-                .inv-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                .inv-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
                 .inv-table th { border: 1px solid black; padding: 5px; background: #f0f0f0; }
-                .inv-table td { border: 1px solid black; padding: 5px; }
-                .table-input { border: none; width: 100%; background: transparent; font-family: inherit; }
+                .inv-table td { border: 1px solid black; padding: 4px 5px; vertical-align: middle; word-wrap: break-word; }
+                .table-input { border: none; width: 100%; background: transparent; font-family: inherit; padding: 0 0 2px 0; height: auto; }
                 .empty-row td { height: 24px; }
                 .inv-footer-section { display: grid; grid-template-columns: 1.5fr 1fr; border: 1px solid black; border-top: none; }
                 .left-section { padding: 5px; font-size: 12px; border-right: 1px solid black; }
@@ -423,13 +651,28 @@ const CreateInvoice = () => {
                 @media print { .no-print { display: none; } .page-container { padding: 0; margin: 0; background: white; } .invoice-paper { border: none; margin: 0; } }
             `}</style>
 
-            <AlertModal
-                isOpen={alertConfig.isOpen}
-                onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
-                type={alertConfig.type}
-                title={alertConfig.title}
-                message={alertConfig.message}
-            />
+                <AlertModal
+                    isOpen={alertConfig.isOpen}
+                    onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+                    type={alertConfig.type}
+                    title={alertConfig.title}
+                    message={alertConfig.message}
+                />
+
+                <PartSelectorModal
+                    isOpen={isPartModalOpen}
+                    onClose={() => setIsPartModalOpen(false)}
+                    inventory={inventory}
+                    onSelect={handlePartSelect}
+                />
+
+                <CustomerSelectorModal
+                    isOpen={isCustomerModalOpen}
+                    onClose={() => setIsCustomerModalOpen(false)}
+                    customers={customers}
+                    onSelect={handleCustomerSelect}
+                />
+            </div>
         </div>
     );
 };

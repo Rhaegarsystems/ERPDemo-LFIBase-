@@ -13,10 +13,12 @@ import {
 import '../styles/Sidebar.css';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import reactLogo from '../assets/react.svg';
+
 const Sidebar = ({ isCollapsed, toggleSidebar }) => {
     const navItems = [
         { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} /> },
-        { name: 'Inventory', path: '/inventory', icon: <Package size={20} /> },
+        { name: 'Parts', path: '/inventory', icon: <Package size={20} /> },
         { name: 'Stock', path: '/stock', icon: <BoxSelect size={20} /> },
         { name: 'Customers', path: '/customers', icon: <Users size={20} /> },
         { name: 'Invoices', path: '/invoices', icon: <FileText size={20} /> },
@@ -30,7 +32,9 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
             transition={{ duration: 0.3, ease: "easeInOut" }}
         >
             <div className="sidebar-header">
-                <div className="logo-icon">LF</div>
+                <div className="logo-icon">
+                    <img src={reactLogo} alt="LF" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                </div>
                 <AnimatePresence>
                     {!isCollapsed && (
                         <motion.h1

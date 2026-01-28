@@ -120,6 +120,13 @@ fn delete_invoice(app: tauri::AppHandle, id: String) -> Result<(), String> {
     db::delete_invoice(&conn, id).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn update_invoice_status(app: tauri::AppHandle, id: String, status: String) -> Result<(), String> {
+    let db_path = db::get_db_path(&app);
+    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    db::update_invoice_status(&conn, &id, &status).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -149,6 +156,7 @@ pub fn run() {
             update_customer,
             delete_customer,
             delete_invoice,
+            update_invoice_status,
             get_revenue_history,
             get_invoice
         ])

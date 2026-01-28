@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import '../styles/GlassTable.css';
 import { Edit2, Trash2 } from 'lucide-react';
 
-const GlassTable = ({ columns, data, actions }) => {
+const GlassTable = ({ columns, data, actions, onRowClick }) => {
     return (
         <div className="glass-table-container">
             <table className="glass-table">
@@ -22,6 +22,8 @@ const GlassTable = ({ columns, data, actions }) => {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: rowIndex * 0.05 }}
+                            onClick={() => onRowClick && onRowClick(row)}
+                            className={onRowClick ? 'clickable-row' : ''}
                         >
                             {columns.map((col, colIndex) => (
                                 <td key={colIndex}>
@@ -30,7 +32,7 @@ const GlassTable = ({ columns, data, actions }) => {
                             ))}
                             {actions && (
                                 <td>
-                                    <div className="action-buttons">
+                                    <div className="action-buttons" onClick={(e) => e.stopPropagation()}>
                                         <button className="icon-btn edit" onClick={() => actions.onEdit && actions.onEdit(row)}>
                                             <Edit2 size={16} />
                                         </button>
@@ -49,3 +51,4 @@ const GlassTable = ({ columns, data, actions }) => {
 };
 
 export default GlassTable;
+

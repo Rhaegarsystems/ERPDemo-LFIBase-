@@ -74,10 +74,20 @@ pub fn init_db(app_handle: &AppHandle) -> Result<Connection> {
         )",
         [],
     )?;
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN client_name TEXT", []);
     let _ = conn.execute("ALTER TABLE invoices ADD COLUMN vendor_code TEXT", []);
     let _ = conn.execute("ALTER TABLE invoices ADD COLUMN transport_mode TEXT", []);
     let _ = conn.execute("ALTER TABLE invoices ADD COLUMN invoice_type TEXT", []);
     let _ = conn.execute("ALTER TABLE invoices ADD COLUMN items_json TEXT", []);
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN dc_no TEXT", []);
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN dc_date TEXT", []);
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN po_no TEXT", []);
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN po_date TEXT", []);
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN due_date TEXT", []);
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN hsn_code TEXT", []);
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN sac_code TEXT", []);
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN state TEXT", []);
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN state_code TEXT", []);
 
     // Activity Logs
     conn.execute(
@@ -167,7 +177,7 @@ pub fn get_activity_logs(conn: &Connection) -> Result<Vec<ActivityLog>> {
 pub struct DashboardStats {
     pub revenue: f64,
     pub customers: i32,
-    pub low_stock: i32,
+    pub total_invoices: i32,
     pub active_orders: i32,
 }
 
@@ -180,10 +190,8 @@ pub fn get_dashboard_stats(conn: &Connection) -> Result<DashboardStats> {
     let customers: i32 = conn
         .query_row("SELECT COUNT(*) FROM customers", [], |r| r.get(0))
         .unwrap_or(0);
-    let low_stock: i32 = conn
-        .query_row("SELECT COUNT(*) FROM inventory WHERE stock < 50", [], |r| {
-            r.get(0)
-        })
+    let total_invoices: i32 = conn
+        .query_row("SELECT COUNT(*) FROM invoices", [], |r| r.get(0))
         .unwrap_or(0);
     let active_orders: i32 = conn
         .query_row(
@@ -195,7 +203,7 @@ pub fn get_dashboard_stats(conn: &Connection) -> Result<DashboardStats> {
     Ok(DashboardStats {
         revenue,
         customers,
-        low_stock,
+        total_invoices,
         active_orders,
     })
 }
@@ -435,10 +443,14 @@ pub struct Invoice {
     pub transport_mode: Option<String>,
     pub invoice_type: Option<String>,
     pub items_json: String,
+    pub hsn_code: Option<String>,
+    pub sac_code: Option<String>,
+    pub state: Option<String>,
+    pub state_code: Option<String>,
 }
 
 pub fn get_invoices(conn: &Connection) -> Result<Vec<Invoice>> {
-    let mut stmt = conn.prepare("SELECT id, client_name, vendor_code, date, due_date, amount, status, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, items_json FROM invoices")?;
+    let mut stmt = conn.prepare("SELECT id, client_name, vendor_code, date, due_date, amount, status, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, items_json, hsn_code, sac_code, state, state_code FROM invoices")?;
     let iter = stmt.query_map([], |row| {
         Ok(Invoice {
             id: row.get(0)?,
@@ -455,6 +467,10 @@ pub fn get_invoices(conn: &Connection) -> Result<Vec<Invoice>> {
             transport_mode: row.get(11).unwrap_or(None),
             invoice_type: row.get(12).unwrap_or(None),
             items_json: row.get(13)?,
+            hsn_code: row.get(14).unwrap_or(None),
+            sac_code: row.get(15).unwrap_or(None),
+            state: row.get(16).unwrap_or(None),
+            state_code: row.get(17).unwrap_or(None),
         })
     })?;
     let mut invoices = Vec::new();
@@ -466,8 +482,8 @@ pub fn get_invoices(conn: &Connection) -> Result<Vec<Invoice>> {
 
 pub fn save_invoice(conn: &Connection, invoice: &Invoice) -> Result<()> {
     conn.execute(
-        "INSERT OR REPLACE INTO invoices (id, client_name, vendor_code, date, due_date, amount, status, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, items_json) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
-        (&invoice.id, &invoice.client_name, &invoice.vendor_code, &invoice.date, &invoice.due_date, &invoice.amount, &invoice.status, &invoice.dc_no, &invoice.dc_date, &invoice.po_no, &invoice.po_date, &invoice.transport_mode, &invoice.invoice_type, &invoice.items_json),
+        "INSERT OR REPLACE INTO invoices (id, client_name, vendor_code, date, due_date, amount, status, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, items_json, hsn_code, sac_code, state, state_code) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
+        rusqlite::params![&invoice.id, &invoice.client_name, &invoice.vendor_code, &invoice.date, &invoice.due_date, &invoice.amount, &invoice.status, &invoice.dc_no, &invoice.dc_date, &invoice.po_no, &invoice.po_date, &invoice.transport_mode, &invoice.invoice_type, &invoice.items_json, &invoice.hsn_code, &invoice.sac_code, &invoice.state, &invoice.state_code],
     )?;
     log_activity(
         conn,
@@ -480,7 +496,7 @@ pub fn save_invoice(conn: &Connection, invoice: &Invoice) -> Result<()> {
 }
 
 pub fn get_invoice(conn: &Connection, id: &str) -> Result<Invoice> {
-    let mut stmt = conn.prepare("SELECT id, client_name, vendor_code, date, amount, status, items_json, due_date, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type FROM invoices WHERE id = ?1")?;
+    let mut stmt = conn.prepare("SELECT id, client_name, vendor_code, date, amount, status, items_json, due_date, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, hsn_code, sac_code, state, state_code FROM invoices WHERE id = ?1")?;
     let invoice = stmt.query_row([id], |row| {
         Ok(Invoice {
             id: row.get(0)?,
@@ -497,6 +513,10 @@ pub fn get_invoice(conn: &Connection, id: &str) -> Result<Invoice> {
             po_date: row.get(11).unwrap_or_default(),
             transport_mode: row.get(12).unwrap_or_default(),
             invoice_type: row.get(13).unwrap_or_default(),
+            hsn_code: row.get(14).unwrap_or_default(),
+            sac_code: row.get(15).unwrap_or_default(),
+            state: row.get(16).unwrap_or_default(),
+            state_code: row.get(17).unwrap_or_default(),
         })
     })?;
     Ok(invoice)
@@ -505,5 +525,20 @@ pub fn get_invoice(conn: &Connection, id: &str) -> Result<Invoice> {
 pub fn delete_invoice(conn: &Connection, id: String) -> Result<()> {
     conn.execute("DELETE FROM invoices WHERE id = ?1", [&id])?;
     log_activity(conn, "Deleted", "Invoice", &id, "Invoice deleted")?;
+    Ok(())
+}
+
+pub fn update_invoice_status(conn: &Connection, id: &str, status: &str) -> Result<()> {
+    conn.execute(
+        "UPDATE invoices SET status = ?1 WHERE id = ?2",
+        [status, id],
+    )?;
+    log_activity(
+        conn,
+        "Updated",
+        "Invoice",
+        id,
+        &format!("Status changed to {}", status),
+    )?;
     Ok(())
 }

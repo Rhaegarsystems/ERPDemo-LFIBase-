@@ -6,6 +6,7 @@ import { invoke } from '@tauri-apps/api/core';
 import GlassTable from '../components/GlassTable';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import AlertModal from '../components/AlertModal';
+import InvoiceStatusModal from '../components/InvoiceStatusModal';
 import '../styles/PageCommon.css';
 
 const Invoices = () => {
@@ -14,6 +15,8 @@ const Invoices = () => {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState(null);
     const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'success', title: '', message: '' });
+    const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+    const [selectedInvoice, setSelectedInvoice] = useState(null);
 
     const fetchInvoices = async () => {
         try {
@@ -69,6 +72,22 @@ const Invoices = () => {
         navigate(`/invoices/edit/${item.id}`);
     };
 
+    const handleRowClick = (item) => {
+        setSelectedInvoice(item);
+        setIsStatusModalOpen(true);
+    };
+
+    const handleStatusChange = async (invoiceId, newStatus) => {
+        try {
+            await invoke('update_invoice_status', { id: invoiceId, status: newStatus });
+            fetchInvoices();
+            showAlert('success', 'Updated', `Invoice status changed to ${newStatus}.`);
+        } catch (e) {
+            showAlert('error', 'Error', "Status update failed: " + e);
+            throw e;
+        }
+    };
+
     return (
         <div className="page-container">
             <header className="page-header">
@@ -101,7 +120,12 @@ const Invoices = () => {
                     <p>Create your first invoice to get started.</p>
                 </div>
             ) : (
-                <GlassTable columns={columns} data={data} actions={{ onEdit: handleEdit, onDelete: handleDelete }} />
+                <GlassTable
+                    columns={columns}
+                    data={data}
+                    actions={{ onEdit: handleEdit, onDelete: handleDelete }}
+                    onRowClick={handleRowClick}
+                />
             )}
 
             <DeleteConfirmationModal
@@ -118,6 +142,13 @@ const Invoices = () => {
                 type={alertConfig.type}
                 title={alertConfig.title}
                 message={alertConfig.message}
+            />
+
+            <InvoiceStatusModal
+                isOpen={isStatusModalOpen}
+                onClose={() => setIsStatusModalOpen(false)}
+                invoice={selectedInvoice}
+                onStatusChange={handleStatusChange}
             />
         </div>
     );

@@ -6,6 +6,7 @@ import GlassTable from '../components/GlassTable';
 import Modal from '../components/Modal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import AlertModal from '../components/AlertModal';
+import DetailViewModal from '../components/DetailViewModal';
 import '../styles/PageCommon.css';
 
 const Inventory = () => {
@@ -14,6 +15,8 @@ const Inventory = () => {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'success', title: '', message: '' });
   const [items, setItems] = useState([]);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
 
   const [newItem, setNewItem] = useState({
     id: null,
@@ -95,6 +98,23 @@ const Inventory = () => {
     setIsModalOpen(true);
   };
 
+  const handleRowClick = (item) => {
+    setSelectedItem(item);
+    setIsDetailModalOpen(true);
+  };
+
+  const detailFields = [
+    { key: 'name', label: 'Part Name' },
+    { key: 'sku', label: 'SKU' },
+    { key: 'process', label: 'Process' },
+    {
+      key: 'stock', label: 'Stock Quantity', render: (val) => (
+        <span style={{ color: val < 50 ? 'var(--danger)' : 'var(--success)', fontWeight: 600 }}>{val} units</span>
+      )
+    },
+    { key: 'price', label: 'Unit Price', render: (val) => `₹${val?.toFixed(2) || '0.00'}` },
+  ];
+
   return (
     <div className="page-container">
       <header className="page-header">
@@ -104,9 +124,9 @@ const Inventory = () => {
             animate={{ opacity: 1, x: 0 }}
             className="page-title"
           >
-            Inventory
+            Parts
           </motion.h1>
-          <p className="page-subtitle">Manage your products and stock levels.</p>
+          <p className="page-subtitle">Manage your parts and stock levels.</p>
         </div>
         <button className="btn-primary-glow" onClick={() => {
           setNewItem({ id: null, name: '', sku: '', stock: 0, price: 0.0, process: '' });
@@ -133,7 +153,12 @@ const Inventory = () => {
           <p>Add your first product to get started.</p>
         </div>
       ) : (
-        <GlassTable columns={columns} data={items} actions={{ onEdit: handleEdit, onDelete: handleDelete }} />
+        <GlassTable
+          columns={columns}
+          data={items}
+          actions={{ onEdit: handleEdit, onDelete: handleDelete }}
+          onRowClick={handleRowClick}
+        />
       )}
 
       <Modal
@@ -217,6 +242,14 @@ const Inventory = () => {
         type={alertConfig.type}
         title={alertConfig.title}
         message={alertConfig.message}
+      />
+
+      <DetailViewModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        title="Part Details"
+        data={selectedItem}
+        fields={detailFields}
       />
     </div>
   );

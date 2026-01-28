@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, ArrowDownRight, RefreshCcw } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, RefreshCcw, ArrowLeftRight } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import GlassTable from '../components/GlassTable';
 import '../styles/PageCommon.css';
@@ -65,7 +65,15 @@ const Stock = () => {
                 </div>
             </header>
 
-            <GlassTable columns={columns} data={data} actions={false} />
+            {data.length === 0 ? (
+                <div className="empty-state">
+                    <ArrowLeftRight size={64} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+                    <h3>No Stock Movements</h3>
+                    <p>Stock movement history will appear here once transactions are made.</p>
+                </div>
+            ) : (
+                <GlassTable columns={columns} data={data} actions={false} />
+            )}
         </div>
     );
 };

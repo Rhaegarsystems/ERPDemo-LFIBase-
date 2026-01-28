@@ -116,6 +116,12 @@
     align-items: flex-start;
     padding-bottom: var(--spacing-md);
     border-bottom: 1px solid var(--glass-border);
+    cursor: default;
+}
+
+.activity-item:hover {
+    background: rgba(139, 92, 246, 0.05);
+    border-color: rgba(139, 92, 246, 0.2);
 }
 
 .activity-item:last-child {

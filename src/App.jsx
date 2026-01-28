@@ -1,3 +1,4 @@
+import React from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './Layout';
 import Dashboard from './pages/Dashboard';
@@ -8,8 +9,18 @@ import Invoices from './pages/Invoices';
 import Settings from './pages/Settings';
 import CreateInvoice from './pages/CreateInvoice';
 import './App.css';
+import LoadingScreen from './components/LoadingScreen';
 
 function App() {
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 2000); // Simulate init
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) return <LoadingScreen />;
+
   return (
     <Router>
       <Routes>

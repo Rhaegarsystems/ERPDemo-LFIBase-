@@ -5,6 +5,7 @@ import GlassTable from '../components/GlassTable';
 import Modal from '../components/Modal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import AlertModal from '../components/AlertModal';
+import DetailViewModal from '../components/DetailViewModal';
 import '../styles/PageCommon.css';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -14,6 +15,8 @@ const Customers = () => {
     const [itemToDelete, setItemToDelete] = useState(null);
     const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'success', title: '', message: '' });
     const [data, setData] = useState([]);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [selectedCustomer, setSelectedCustomer] = useState(null);
 
     const [newCustomer, setNewCustomer] = useState({
         id: null,
@@ -104,6 +107,25 @@ const Customers = () => {
         setIsModalOpen(true);
     };
 
+    const handleRowClick = (item) => {
+        setSelectedCustomer(item);
+        setIsDetailModalOpen(true);
+    };
+
+    const detailFields = [
+        { key: 'name', label: 'Customer Name' },
+        { key: 'vendor_code', label: 'Vendor Code' },
+        { key: 'contact', label: 'Contact Person' },
+        { key: 'email', label: 'Email Address' },
+        { key: 'phone', label: 'Phone Number' },
+        { key: 'gstin', label: 'GSTIN' },
+        { key: 'address', label: 'Address' },
+        { key: 'state', label: 'State' },
+        { key: 'state_code', label: 'State Code' },
+        { key: 'orders', label: 'Total Orders' },
+        { key: 'total', label: 'Total Value' },
+    ];
+
     return (
         <div className="page-container">
             <header className="page-header">
@@ -139,7 +161,12 @@ const Customers = () => {
                     <p>Add your first customer to get started.</p>
                 </div>
             ) : (
-                <GlassTable columns={columns} data={data} actions={{ onEdit: handleEdit, onDelete: handleDelete }} />
+                <GlassTable
+                    columns={columns}
+                    data={data}
+                    actions={{ onEdit: handleEdit, onDelete: handleDelete }}
+                    onRowClick={handleRowClick}
+                />
             )}
 
             <Modal
@@ -241,6 +268,14 @@ const Customers = () => {
                 type={alertConfig.type}
                 title={alertConfig.title}
                 message={alertConfig.message}
+            />
+
+            <DetailViewModal
+                isOpen={isDetailModalOpen}
+                onClose={() => setIsDetailModalOpen(false)}
+                title="Customer Details"
+                data={selectedCustomer}
+                fields={detailFields}
             />
         </div>
     );

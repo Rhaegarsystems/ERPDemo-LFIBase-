@@ -60,3 +60,17 @@
 .icon-btn.delete:hover {
     color: var(--danger);
 }
+
+/* Clickable row styles */
+.glass-table tr.clickable-row {
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.glass-table tr.clickable-row:hover td {
+    background: rgba(139, 92, 246, 0.08);
+}
+
+.glass-table tr.clickable-row:active td {
+    background: rgba(139, 92, 246, 0.12);
+}
