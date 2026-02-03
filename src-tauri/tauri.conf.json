@@ -45,15 +45,8 @@
     "longDescription": "A comprehensive Enterprise Resource Planning solution for managing inventory, customers, invoicing, and stock movements.",
     "category": "Business",
     "windows": {
-      "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
-      "timestampUrl": null,
-      "wix": null,
       "nsis": {
-        "license": "LICENSE.txt",
-        "installerIcon": null,
-        "headerImage": null,
-        "sidebarImage": null,
         "installMode": "currentUser",
         "languages": [
           "English"
