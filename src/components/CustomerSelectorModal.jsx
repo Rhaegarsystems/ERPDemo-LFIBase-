@@ -126,6 +126,10 @@ const CustomerSelectorModal = ({ isOpen, onClose, customers, onSelect }) => {
                                         key={customer.id}
                                         onClick={() => handleSelect(customer)}
                                         style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: '1.5fr 1fr 1fr',
+                                            gap: '1rem',
+                                            alignItems: 'center',
                                             padding: '1rem 1.5rem',
                                             borderBottom: '1px solid var(--border)',
                                             cursor: 'pointer',
@@ -134,29 +138,9 @@ const CustomerSelectorModal = ({ isOpen, onClose, customers, onSelect }) => {
                                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(139, 92, 246, 0.08)'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                     >
-                                        <div style={{
-                                            display: 'grid',
-                                            gridTemplateColumns: '1.5fr 1fr 1fr',
-                                            gap: '1rem',
-                                            alignItems: 'center',
-                                            marginBottom: '0.5rem'
-                                        }}>
-                                            <div style={{ fontWeight: 600, color: 'var(--primary)', fontSize: '0.95rem' }}>{customer.name}</div>
-                                            <div style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>{customer.vendor_code || '-'}</div>
-                                            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontFamily: 'monospace' }}>{customer.gstin || '-'}</div>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                            {customer.address && (
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                    <MapPin size={12} /> {customer.address.substring(0, 40)}{customer.address.length > 40 ? '...' : ''}
-                                                </span>
-                                            )}
-                                            {customer.phone && (
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                    <Phone size={12} /> {customer.phone}
-                                                </span>
-                                            )}
-                                        </div>
+                                        <div style={{ fontWeight: 600, color: 'var(--primary)', fontSize: '0.95rem' }}>{customer.name}</div>
+                                        <div style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>{customer.vendor_code || '-'}</div>
+                                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontFamily: 'monospace' }}>{customer.gstin || '-'}</div>
                                     </div>
                                 ))
                             )}

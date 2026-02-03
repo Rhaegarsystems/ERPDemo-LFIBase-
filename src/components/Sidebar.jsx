@@ -13,8 +13,6 @@ import {
 import '../styles/Sidebar.css';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import reactLogo from '../assets/react.svg';
-
 const Sidebar = ({ isCollapsed, toggleSidebar }) => {
     const navItems = [
         { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} /> },
@@ -32,21 +30,21 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
             transition={{ duration: 0.3, ease: "easeInOut" }}
         >
             <div className="sidebar-header">
-                <div className="logo-icon">
-                    <img src={reactLogo} alt="LF" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                <div className="brand-wrapper">
+                    <span className="brand-logo">LFI</span>
+                    <AnimatePresence>
+                        {!isCollapsed && (
+                            <motion.span
+                                className="brand-subtitle"
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                            >
+                                Little Flower Industries
+                            </motion.span>
+                        )}
+                    </AnimatePresence>
                 </div>
-                <AnimatePresence>
-                    {!isCollapsed && (
-                        <motion.h1
-                            className="brand-name"
-                            initial={{ opacity: 0, width: 0 }}
-                            animate={{ opacity: 1, width: 'auto' }}
-                            exit={{ opacity: 0, width: 0 }}
-                        >
-                            Little Flower
-                        </motion.h1>
-                    )}
-                </AnimatePresence>
             </div>
 
             <nav className="sidebar-nav">

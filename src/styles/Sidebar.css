@@ -1,57 +1,70 @@
 .sidebar {
-    /* Width handled by Framer Motion */
     height: 100vh;
     background: var(--glass-bg);
-    /* backdrop-filter: blur(var(--backdrop-blur)); */
-    /* -webkit-backdrop-filter: blur(var(--backdrop-blur)); */
     border-right: 1px solid var(--glass-border);
     display: flex;
     flex-direction: column;
     padding: var(--spacing-lg) var(--spacing-md);
-    /* Reduced padding */
     position: fixed;
     left: 0;
     top: 0;
     z-index: 50;
     box-shadow: 20px 0 40px rgba(0, 0, 0, 0.1);
     overflow: hidden;
-    /* Hide text when collapsing */
 }
 
 .sidebar-header {
     display: flex;
     align-items: center;
-    gap: var(--spacing-md);
+    justify-content: flex-start;
     padding-bottom: var(--spacing-lg);
     margin-bottom: var(--spacing-lg);
     border-bottom: 1px solid var(--glass-border);
-    height: 70px;
-    /* Fixed height for consistency */
+    min-height: 50px;
 }
 
-.logo-icon {
-    width: 42px;
-    height: 42px;
-    min-width: 42px;
-    /* Prevent squishing */
-    background: var(--gradient-primary);
-    color: white;
-    border-radius: var(--radius-md);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 1.25rem;
-    box-shadow: var(--glow-primary);
-}
-
+/* Clean text branding - no container */
 .brand-name {
-    font-size: 1.2rem;
-    font-weight: 600;
+    font-size: 1.35rem;
+    font-weight: 700;
     color: var(--text-primary);
     margin: 0;
     white-space: nowrap;
     overflow: hidden;
+    letter-spacing: -0.02em;
+}
+
+/* LFI italic logo text */
+.brand-logo {
+    font-size: 1.6rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #4ade80 0%, #16a34a 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-style: italic;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+}
+
+.brand-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.brand-subtitle {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    overflow: hidden;
+    font-style: italic;
+}
+
+.sidebar.collapsed .sidebar-header {
+    justify-content: center;
 }
 
 .sidebar-nav {
@@ -73,29 +86,18 @@
     border: 1px solid transparent;
     margin-bottom: 4px;
     white-space: nowrap;
-    /* Prevent text wrapping */
+    background: none;
+    cursor: pointer;
+    text-decoration: none;
 }
 
-/* Collapsed state adjustments */
 .sidebar.collapsed .nav-item {
     justify-content: center;
     padding: var(--spacing-md) 0;
 }
 
-.sidebar.collapsed .logo-icon {
-    margin: 0 auto;
-    /* Center logo */
-}
-
-.sidebar.collapsed .sidebar-header {
-    justify-content: center;
-    padding-left: 0;
-    padding-right: 0;
-}
-
 .icon-wrapper {
     min-width: 24px;
-    /* Ensure icons don't shrink */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -121,4 +123,8 @@
 .sidebar-footer {
     padding-top: var(--spacing-md);
     border-top: 1px solid var(--border);
+}
+
+.sidebar-footer .nav-item {
+    width: 100%;
 }

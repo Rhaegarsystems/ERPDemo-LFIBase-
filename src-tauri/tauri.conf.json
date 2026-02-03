@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "littleflower",
-  "version": "0.1.0",
+  "productName": "Little Flower Industries ERP",
+  "version": "1.1.0",
   "identifier": "com.rhaegarsystems.littleflower",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -12,9 +12,15 @@
   "app": {
     "windows": [
       {
-        "title": "littleflower",
-        "width": 800,
-        "height": 600
+        "title": "Little Flower Industries ERP",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600,
+        "center": true,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true
       }
     ],
     "security": {
@@ -23,13 +29,37 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": [
+      "msi",
+      "nsis"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "publisher": "Rhaegarsystems",
+    "shortDescription": "ERP solution for Little Flower Industries",
+    "longDescription": "A comprehensive Enterprise Resource Planning solution for managing inventory, customers, invoicing, and stock movements.",
+    "category": "Business",
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": null,
+      "wix": null,
+      "nsis": {
+        "license": "LICENSE.txt",
+        "installerIcon": null,
+        "headerImage": null,
+        "sidebarImage": null,
+        "installMode": "currentUser",
+        "languages": [
+          "English"
+        ],
+        "displayLanguageSelector": false
+      }
+    }
   }
 }

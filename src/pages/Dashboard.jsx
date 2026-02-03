@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { IndianRupee, Package, Users, Activity, ClipboardList, PlusCircle, Edit, Trash2, Save, FileText, User, Box } from 'lucide-react';
+import { IndianRupee, Users, ClipboardList, PlusCircle, Edit, Trash2, Save, FileText, User, Box, Activity } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import StatCard from '../components/StatCard';
 import '../styles/Dashboard.css';
@@ -8,7 +8,6 @@ import '../styles/Dashboard.css';
 const Dashboard = () => {
     const [statsData, setStatsData] = useState({
         revenue: 0,
-        activeOrders: 0,
         customers: 0,
         totalInvoices: 0
     });
@@ -20,7 +19,6 @@ const Dashboard = () => {
                 const result = await invoke('get_dashboard_stats');
                 setStatsData({
                     revenue: result.revenue,
-                    activeOrders: result.active_orders,
                     customers: result.customers,
                     totalInvoices: result.total_invoices || 0
                 });
@@ -63,33 +61,21 @@ const Dashboard = () => {
         }
     };
 
+    // Stats cards - Only 3 cards now (removed Active Orders)
     const stats = [
         {
             title: "Total Revenue",
             value: `₹${statsData.revenue.toLocaleString('en-IN')}`,
-            change: "+20.1%",
-            trend: "up",
             icon: <IndianRupee size={24} color="#10b981" />
-        },
-        {
-            title: "Active Orders",
-            value: statsData.activeOrders.toString(),
-            change: `${statsData.activeOrders}`,
-            trend: "up",
-            icon: <Package size={24} color="#8b5cf6" />
         },
         {
             title: "Total Customers",
             value: statsData.customers.toString(),
-            change: `${statsData.customers}`,
-            trend: "up",
             icon: <Users size={24} color="#3b82f6" />
         },
         {
             title: "Total Invoices",
             value: statsData.totalInvoices.toString(),
-            change: `${statsData.totalInvoices} invoices`,
-            trend: "up",
             icon: <FileText size={24} color="#f59e0b" />
         }
     ];
@@ -126,7 +112,7 @@ const Dashboard = () => {
                 className="dashboard-card"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
+                transition={{ delay: 0.3 }}
                 style={{ marginTop: '1.5rem' }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
@@ -153,11 +139,13 @@ const Dashboard = () => {
                 ) : (
                     <div style={{ maxHeight: '500px', overflowY: 'auto', paddingRight: '0.5rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            {activityLogs.slice(0, 25).map((log, index) => {
+                            {activityLogs.slice(0, 25).map((log) => {
                                 const actionStyle = getActionColor(log.action);
                                 return (
-                                    <div
+                                    <motion.div
                                         key={log.id}
+                                        initial={{ opacity: 0, x: -10 }}
+                                        animate={{ opacity: 1, x: 0 }}
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
@@ -166,9 +154,7 @@ const Dashboard = () => {
                                             background: 'var(--bg-tertiary)',
                                             borderRadius: 'var(--radius-md)',
                                             border: '1px solid var(--border)',
-                                            transition: 'all 0.15s ease'
                                         }}
-                                        className="activity-item"
                                     >
                                         {/* Action Icon */}
                                         <div style={{
@@ -240,7 +226,7 @@ const Dashboard = () => {
                                         }}>
                                             {log.timestamp}
                                         </div>
-                                    </div>
+                                    </motion.div>
                                 );
                             })}
                         </div>

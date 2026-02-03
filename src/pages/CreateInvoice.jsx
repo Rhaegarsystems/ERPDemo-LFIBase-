@@ -12,12 +12,51 @@ import AlertModal from '../components/AlertModal';
 import PartSelectorModal from '../components/PartSelectorModal';
 import CustomerSelectorModal from '../components/CustomerSelectorModal';
 import '../styles/PageCommon.css';
+import lfiLogo from '../assets/Logo.png';
+
+// Helper: Format date input with auto-hyphen (DD-MM-YYYY)
+const formatDateInput = (value) => {
+    // Remove all non-digits
+    let digits = value.replace(/\D/g, '');
+
+    // Limit to 8 digits (DDMMYYYY)
+    digits = digits.substring(0, 8);
+
+    // Add hyphens automatically
+    if (digits.length >= 4) {
+        return `${digits.substring(0, 2)}-${digits.substring(2, 4)}-${digits.substring(4)}`;
+    } else if (digits.length >= 2) {
+        return `${digits.substring(0, 2)}-${digits.substring(2)}`;
+    }
+    return digits;
+};
+
+// Convert DD-MM-YYYY to YYYY-MM-DD for storage
+const toISODate = (ddmmyyyy) => {
+    if (!ddmmyyyy || ddmmyyyy.length < 10) return ddmmyyyy;
+    const parts = ddmmyyyy.split('-');
+    if (parts.length === 3 && parts[0].length === 2) {
+        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    return ddmmyyyy;
+};
+
+// Convert YYYY-MM-DD to DD-MM-YYYY for display
+const toDisplayDate = (isoDate) => {
+    if (!isoDate || isoDate.length < 10) return isoDate || '';
+    const parts = isoDate.split('-');
+    if (parts.length === 3 && parts[0].length === 4) {
+        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    return isoDate;
+};
 
 const CreateInvoice = () => {
     const navigate = useNavigate();
     const { id } = useParams();
     const invoiceRef = useRef(null);
     const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'success', title: '', message: '' });
+    const [pdfProgress, setPdfProgress] = useState({ isGenerating: false, progress: 0, status: '' });
 
     const [customers, setCustomers] = useState([]);
     const [inventory, setInventory] = useState([]);
@@ -35,7 +74,7 @@ const CreateInvoice = () => {
         po_no: '',
         po_date: '',
         transport_mode: '',
-        invoice_type: 'Sale', // 'Sale' or 'Service'
+        invoice_type: '', // 'Sale' or 'Service' - blank by default
         hsn_code: '',
         sac_code: '',
         state: 'Tamilnadu',
@@ -190,16 +229,41 @@ const CreateInvoice = () => {
 
     const handlePrint = async () => {
         if (!invoiceRef.current) return;
+
+        setPdfProgress({ isGenerating: true, progress: 0, status: 'Preparing invoice...' });
+
         try {
+            // Step 1: Wait for images to load (10%)
+            setPdfProgress({ isGenerating: true, progress: 10, status: 'Loading images...' });
+            const images = invoiceRef.current.querySelectorAll('img');
+            await Promise.all(Array.from(images).map(img => {
+                if (img.complete) return Promise.resolve();
+                return new Promise((resolve) => {
+                    img.onload = resolve;
+                    img.onerror = resolve;
+                });
+            }));
+
+            // Step 2: Capturing invoice (30%)
+            setPdfProgress({ isGenerating: true, progress: 30, status: 'Capturing invoice...' });
             const canvas = await html2canvas(invoiceRef.current, {
                 scale: 2,
                 useCORS: true,
+                allowTaint: true,
+                logging: false,
+                imageTimeout: 0,
                 onclone: (clonedDoc) => {
                     const noPrintEls = clonedDoc.querySelectorAll('.no-print');
                     noPrintEls.forEach(el => el.style.display = 'none');
 
-                    // CRITICAL FIX: Replace inputs/selects with text nodes for perfect PDF rendering
-                    // This matches the appearance of Rate/Amount columns which are already plain text
+                    const logoImgs = clonedDoc.querySelectorAll('.logo-img');
+                    logoImgs.forEach(img => {
+                        img.style.width = '80px';
+                        img.style.height = 'auto';
+                        img.style.maxHeight = '80px';
+                        img.style.objectFit = 'contain';
+                    });
+
                     const inputs = clonedDoc.querySelectorAll('.table-input, .form-input');
                     inputs.forEach(input => {
                         const value = input.value;
@@ -210,7 +274,6 @@ const CreateInvoice = () => {
                         span.style.width = '100%';
                         span.style.display = 'inline-block';
 
-                        // Preserve text alignment (e.g., for Qty which is right-aligned)
                         if (input.classList.contains('text-right')) {
                             span.style.textAlign = 'right';
                         }
@@ -221,18 +284,33 @@ const CreateInvoice = () => {
                     });
                 }
             });
+
+            // Step 3: Generating PDF (60%)
+            setPdfProgress({ isGenerating: true, progress: 60, status: 'Generating PDF...' });
             const imgData = canvas.toDataURL('image/png');
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
             pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+            // Step 4: Preparing file (80%)
+            setPdfProgress({ isGenerating: true, progress: 80, status: 'Preparing file...' });
             const pdfData = pdf.output('arraybuffer');
+
+            // Step 5: Saving (90%)
+            setPdfProgress({ isGenerating: true, progress: 90, status: 'Choose save location...' });
             const filePath = await save({ filters: [{ name: 'PDF', extensions: ['pdf'] }], defaultPath: `${invoice.id}.pdf` });
+
             if (filePath) {
+                setPdfProgress({ isGenerating: true, progress: 95, status: 'Saving to disk...' });
                 await writeFile(filePath, new Uint8Array(pdfData));
+                setPdfProgress({ isGenerating: false, progress: 100, status: '' });
                 showAlert('success', 'PDF Saved', `Saved to ${filePath}`);
+            } else {
+                setPdfProgress({ isGenerating: false, progress: 0, status: '' });
             }
         } catch (e) {
+            setPdfProgress({ isGenerating: false, progress: 0, status: '' });
             showAlert('error', 'PDF Error', String(e));
         }
     };
@@ -283,9 +361,20 @@ const CreateInvoice = () => {
                         </div>
                     </div>
                     <div className="form-group">
-                        <label>Date</label>
-                        <input type="date" className="form-input" value={invoice.date}
-                            onChange={e => setInvoice({ ...invoice, date: e.target.value })} />
+                        <label>Date (DD-MM-YYYY)</label>
+                        <input type="text" className="form-input"
+                            value={toDisplayDate(invoice.date)}
+                            placeholder="DD-MM-YYYY"
+                            onChange={e => {
+                                const formatted = formatDateInput(e.target.value);
+                                setInvoice({ ...invoice, date: formatted.length === 10 ? toISODate(formatted) : invoice.date });
+                            }}
+                            onBlur={e => {
+                                const formatted = formatDateInput(e.target.value);
+                                if (formatted.length === 10) {
+                                    setInvoice({ ...invoice, date: toISODate(formatted) });
+                                }
+                            }} />
                     </div>
                     <div className="form-group">
                         <label>Vendor Code</label>
@@ -311,8 +400,10 @@ const CreateInvoice = () => {
                     </div>
                     <div className="form-group">
                         <label>DC Date</label>
-                        <input type="text" className="form-input" value={invoice.dc_date} placeholder="YYYY-MM-DD"
-                            onChange={e => setInvoice({ ...invoice, dc_date: e.target.value })} />
+                        <input type="text" className="form-input"
+                            value={invoice.dc_date}
+                            placeholder="DD-MM-YYYY"
+                            onChange={e => setInvoice({ ...invoice, dc_date: formatDateInput(e.target.value) })} />
                     </div>
                     <div className="form-group">
                         <label>PO No</label>
@@ -321,8 +412,10 @@ const CreateInvoice = () => {
                     </div>
                     <div className="form-group">
                         <label>PO Date</label>
-                        <input type="text" className="form-input" value={invoice.po_date} placeholder="YYYY-MM-DD"
-                            onChange={e => setInvoice({ ...invoice, po_date: e.target.value })} />
+                        <input type="text" className="form-input"
+                            value={invoice.po_date}
+                            placeholder="DD-MM-YYYY"
+                            onChange={e => setInvoice({ ...invoice, po_date: formatDateInput(e.target.value) })} />
                     </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
@@ -512,7 +605,7 @@ const CreateInvoice = () => {
             <div className="print-container-wrapper">
                 <div className="invoice-paper" ref={invoiceRef}>
                     <div className="inv-header">
-                        <div className="logo-section"><div className="logo-box">LFI</div></div>
+                        <div className="logo-section"><img src={lfiLogo} alt="LFI Logo" className="logo-img" /></div>
                         <div className="company-details">
                             <h1>LITTLE FLOWER INDUSTRIES</h1>
                             <p>ISO 9001-2015 COMPANY</p>
@@ -627,7 +720,8 @@ const CreateInvoice = () => {
                 <style>{`
                 .invoice-paper { background: white; color: black; width: 210mm; min-height: 297mm; padding: 10mm; margin: 0 auto; border: 1px solid #ddd; font-family: 'Times New Roman', serif; position: relative; }
                 .inv-header { text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 5px; position: relative; }
-                .logo-box { border: 2px solid #8b5cf6; color: #8b5cf6; padding: 5px; font-weight: bold; font-size: 24px; position: absolute; left: 0; top: 0; }
+                .logo-section { position: absolute; left: 0; top: 0; }
+                .logo-img { width: 80px; height: auto; max-height: 80px; object-fit: contain; }
                 .company-details h1 { font-size: 20px; font-weight: bold; margin: 0; text-transform: uppercase; color: black; }
                 .company-details p { margin: 2px 0; font-size: 12px; }
                 .gst-section { position: absolute; right: 0; top: 0; text-align: right; font-size: 12px; font-weight: bold; }
@@ -672,6 +766,66 @@ const CreateInvoice = () => {
                     customers={customers}
                     onSelect={handleCustomerSelect}
                 />
+
+                {/* PDF Progress Modal */}
+                {pdfProgress.isGenerating && (
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0, 0, 0, 0.7)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 9999
+                    }}>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            style={{
+                                background: 'var(--bg-secondary)',
+                                borderRadius: 'var(--radius-lg)',
+                                padding: '2rem',
+                                minWidth: '320px',
+                                textAlign: 'center',
+                                border: '1px solid var(--border)'
+                            }}
+                        >
+                            <div style={{ marginBottom: '1rem' }}>
+                                <Printer size={40} style={{ color: 'var(--primary)', marginBottom: '0.5rem' }} />
+                                <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>Generating PDF</h3>
+                                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                    {pdfProgress.status}
+                                </p>
+                            </div>
+
+                            <div style={{
+                                background: 'var(--bg-tertiary)',
+                                borderRadius: '10px',
+                                height: '12px',
+                                overflow: 'hidden',
+                                marginBottom: '0.75rem'
+                            }}>
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${pdfProgress.progress}%` }}
+                                    transition={{ duration: 0.3 }}
+                                    style={{
+                                        height: '100%',
+                                        background: 'linear-gradient(90deg, #8b5cf6, #6366f1)',
+                                        borderRadius: '10px'
+                                    }}
+                                />
+                            </div>
+
+                            <p style={{ margin: 0, fontWeight: 600, color: 'var(--primary)', fontSize: '1.1rem' }}>
+                                {pdfProgress.progress}%
+                            </p>
+                        </motion.div>
+                    </div>
+                )}
             </div>
         </div>
     );

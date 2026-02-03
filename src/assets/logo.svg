@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Outer parallelogram frame -->
+  <path d="M8 75 L8 5 L92 5 L92 75 L8 75" stroke-width="4"/>
+  
+  <!-- Inner parallelogram frame -->
+  <path d="M14 69 L14 11 L86 11 L86 69 L14 69" stroke-width="2.5"/>
+  
+  <!-- L shape - left vertical -->
+  <path d="M20 17 L20 63 L40 63" stroke-width="4"/>
+  
+  <!-- F shape - center -->
+  <path d="M32 17 L32 63" stroke-width="3"/>
+  <path d="M32 17 L55 17" stroke-width="3"/>
+  <path d="M32 38 L50 38" stroke-width="3"/>
+  
+  <!-- I shape - right side with serifs -->
+  <path d="M62 17 L80 17" stroke-width="3"/>
+  <path d="M71 17 L71 63" stroke-width="4"/>
+  <path d="M62 63 L80 63" stroke-width="3"/>
+</svg>
