@@ -51,6 +51,24 @@ const toDisplayDate = (isoDate) => {
     return isoDate;
 };
 
+// Helper: Convert number to Indian currency words (Rupees and Paise)
+const amountToWords = (amount) => {
+    try {
+        const rupees = Math.floor(amount);
+        const paise = Math.round((amount - rupees) * 100);
+
+        let result = `Rupees ${toWords(rupees)}`;
+
+        if (paise > 0) {
+            result += ` and ${toWords(paise)} Paise`;
+        }
+
+        return result + " Only";
+    } catch (e) {
+        return "Zero Only";
+    }
+};
+
 const CreateInvoice = () => {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -74,11 +92,12 @@ const CreateInvoice = () => {
         po_no: '',
         po_date: '',
         transport_mode: '',
-        invoice_type: '', // 'Sale' or 'Service' - blank by default
+        invoice_type: '', // 'Sale', 'Service', or 'Sale, Service'
         hsn_code: '',
         sac_code: '',
         state: 'Tamilnadu',
         state_code: '33',
+        pincode: '',
         status: 'Pending',
         items: []
     });
@@ -89,7 +108,7 @@ const CreateInvoice = () => {
     const [isPartModalOpen, setIsPartModalOpen] = useState(false);
     const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
     const [newItem, setNewItem] = useState({
-        sku: '',
+        part_number: '',
         name: '',
         process: '',
         qty: 1,
@@ -114,11 +133,12 @@ const CreateInvoice = () => {
                         items: parsedItems,
                         client_details: client || null,
                         vendor_code: invData.vendor_code || client?.vendor_code || '',
-                        invoice_type: invData.invoice_type || 'Sale',
+                        invoice_type: invData.invoice_type || '',
                         hsn_code: invData.hsn_code || '',
                         sac_code: invData.sac_code || '',
-                        state: client?.state || 'Tamilnadu',
-                        state_code: client?.state_code || '33'
+                        state: invData.state || client?.state || 'Tamilnadu',
+                        state_code: invData.state_code || client?.state_code || '33',
+                        pincode: invData.pincode || client?.pincode || ''
                     });
                 }
             } catch (e) {
@@ -148,25 +168,26 @@ const CreateInvoice = () => {
             client_details: customer,
             vendor_code: customer.vendor_code || '',
             state: customer.state || 'Tamilnadu',
-            state_code: customer.state_code || '33'
+            state_code: customer.state_code || '33',
+            pincode: customer.pincode || ''
         }));
     };
 
     const addItem = () => {
         const amount = (parseFloat(newItem.qty) || 0) * (parseFloat(newItem.rate) || 0);
-        if (newItem.sku || newItem.name) {
+        if (newItem.part_number || newItem.name) {
             setInvoice(prev => ({
                 ...prev,
                 items: [...prev.items, { ...newItem, amount }]
             }));
             // Reset form
-            setNewItem({ sku: '', name: '', process: '', qty: 1, rate: 0 });
+            setNewItem({ part_number: '', name: '', process: '', qty: 1, rate: 0 });
         }
     };
 
     const handlePartSelect = (part) => {
         setNewItem({
-            sku: part.sku,
+            part_number: part.part_number,
             name: part.name,
             process: part.process || '',
             qty: 1,
@@ -177,15 +198,15 @@ const CreateInvoice = () => {
     const updateItem = (index, field, value) => {
         const newItems = [...invoice.items];
         const item = { ...newItems[index], [field]: value };
-        if (field === 'sku') {
-            const product = inventory.find(p => p.sku === value);
+        if (field === 'part_number') {
+            const product = inventory.find(p => p.part_number === parseInt(value));
             if (product) {
                 item.name = product.name;
                 item.process = product.process || '';
                 item.rate = product.price;
             }
         }
-        if (field === 'qty' || field === 'rate' || field === 'sku') {
+        if (field === 'qty' || field === 'rate' || field === 'part_number') {
             item.amount = (parseFloat(item.qty) || 0) * (parseFloat(item.rate) || 0);
         }
         newItems[index] = item;
@@ -217,7 +238,8 @@ const CreateInvoice = () => {
                     hsn_code: invoice.hsn_code,
                     sac_code: invoice.sac_code,
                     state: invoice.state,
-                    state_code: invoice.state_code
+                    state_code: invoice.state_code,
+                    pincode: invoice.pincode
                 }
             });
             showAlert('success', 'Invoice Saved', 'Invoice saved successfully.');
@@ -394,12 +416,17 @@ const CreateInvoice = () => {
                             onChange={e => setInvoice({ ...invoice, state_code: e.target.value })} />
                     </div>
                     <div className="form-group">
-                        <label>DC No</label>
+                        <label>Pincode</label>
+                        <input type="text" className="form-input" value={invoice.pincode}
+                            onChange={e => setInvoice({ ...invoice, pincode: e.target.value })} />
+                    </div>
+                    <div className="form-group">
+                        <label>Your DC No</label>
                         <input type="text" className="form-input" value={invoice.dc_no}
                             onChange={e => setInvoice({ ...invoice, dc_no: e.target.value })} />
                     </div>
                     <div className="form-group">
-                        <label>DC Date</label>
+                        <label>Your DC Date</label>
                         <input type="text" className="form-input"
                             value={invoice.dc_date}
                             placeholder="DD-MM-YYYY"
@@ -435,8 +462,16 @@ const CreateInvoice = () => {
                         <input type="text" className="form-input" value={invoice.sac_code}
                             onChange={e => setInvoice({ ...invoice, sac_code: e.target.value })} placeholder="Enter SAC" />
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', marginTop: '0.5rem' }}>
-                            <input type="checkbox" checked={invoice.invoice_type === 'Service'}
-                                onChange={() => setInvoice({ ...invoice, invoice_type: invoice.invoice_type === 'Service' ? '' : 'Service' })} /> Service (SAC)
+                            <input type="checkbox" checked={invoice.invoice_type.includes('Service')}
+                                onChange={() => {
+                                    let types = invoice.invoice_type.split(',').map(t => t.trim()).filter(t => t);
+                                    if (types.includes('Service')) {
+                                        types = types.filter(t => t !== 'Service');
+                                    } else {
+                                        types.push('Service');
+                                    }
+                                    setInvoice({ ...invoice, invoice_type: types.join(', ') });
+                                }} /> Service (SAC)
                         </label>
                     </div>
                     <div className="form-group">
@@ -444,8 +479,16 @@ const CreateInvoice = () => {
                         <input type="text" className="form-input" value={invoice.hsn_code}
                             onChange={e => setInvoice({ ...invoice, hsn_code: e.target.value })} placeholder="Enter HSN" />
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', marginTop: '0.5rem' }}>
-                            <input type="checkbox" checked={invoice.invoice_type === 'Sale'}
-                                onChange={() => setInvoice({ ...invoice, invoice_type: invoice.invoice_type === 'Sale' ? '' : 'Sale' })} /> Sale (HSN)
+                            <input type="checkbox" checked={invoice.invoice_type.includes('Sale')}
+                                onChange={() => {
+                                    let types = invoice.invoice_type.split(',').map(t => t.trim()).filter(t => t);
+                                    if (types.includes('Sale')) {
+                                        types = types.filter(t => t !== 'Sale');
+                                    } else {
+                                        types.push('Sale');
+                                    }
+                                    setInvoice({ ...invoice, invoice_type: types.join(', ') });
+                                }} /> Sale (HSN)
                         </label>
                     </div>
                 </div>
@@ -455,7 +498,7 @@ const CreateInvoice = () => {
                     <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-primary)', fontSize: '0.9rem' }}>Add Line Item</h4>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 80px 80px auto', gap: '0.75rem', alignItems: 'end' }}>
                         <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label style={{ fontSize: '0.75rem' }}>Part No. (SKU)</label>
+                            <label style={{ fontSize: '0.75rem' }}>Part Number</label>
                             <div
                                 onClick={() => setIsPartModalOpen(true)}
                                 style={{
@@ -467,12 +510,12 @@ const CreateInvoice = () => {
                                     border: '1px solid var(--border)',
                                     borderRadius: 'var(--radius-md)',
                                     cursor: 'pointer',
-                                    color: newItem.sku ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                    color: newItem.part_number ? 'var(--text-primary)' : 'var(--text-secondary)',
                                     transition: 'border-color 0.2s'
                                 }}
                             >
                                 <Search size={14} />
-                                <span>{newItem.sku || 'Click to select part...'}</span>
+                                <span>{newItem.part_number || 'Select part...'}</span>
                             </div>
                         </div>
                         <div className="form-group" style={{ marginBottom: 0 }}>
@@ -553,7 +596,7 @@ const CreateInvoice = () => {
                                 <thead>
                                     <tr style={{ background: 'rgba(139, 92, 246, 0.1)' }}>
                                         <th style={{ padding: '0.75rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem' }}>#</th>
-                                        <th style={{ padding: '0.75rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem' }}>Part No.</th>
+                                        <th style={{ padding: '0.75rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem' }}>Part Number</th>
                                         <th style={{ padding: '0.75rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem' }}>Part Name</th>
                                         <th style={{ padding: '0.75rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem' }}>Process</th>
                                         <th style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem' }}>Qty</th>
@@ -566,7 +609,7 @@ const CreateInvoice = () => {
                                     {invoice.items.map((item, i) => (
                                         <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                                             <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{i + 1}</td>
-                                            <td style={{ padding: '0.75rem', color: 'var(--primary)', fontWeight: 500 }}>{item.sku || '-'}</td>
+                                            <td style={{ padding: '0.75rem', color: 'var(--primary)', fontWeight: 500 }}>{item.part_number || '-'}</td>
                                             <td style={{ padding: '0.75rem', color: 'var(--text-primary)' }}>{item.name || '-'}</td>
                                             <td style={{ padding: '0.75rem', color: 'var(--text-primary)' }}>{item.process || '-'}</td>
                                             <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-primary)' }}>{item.qty}</td>
@@ -627,8 +670,9 @@ const CreateInvoice = () => {
                             <p><strong>Address:</strong> {invoice.client_details?.address || '_________________'}</p>
                             <div className="flex justify-between mt-2">
                                 <p><strong>GSTIN:</strong> {invoice.client_details?.gstin || '________'}</p>
-                                <p><strong>State:</strong> {invoice.client_details?.state || '__________'} ({invoice.client_details?.state_code || '__'})</p>
+                                <p style={{ paddingRight: '20px' }}><strong>Pincode:</strong> {invoice.pincode || '______'}</p>
                             </div>
+                            <p><strong>State:</strong> {invoice.state || '__________'} ({invoice.state_code || '__'})</p>
                         </div>
                         <div className="inv-details">
                             <div className="row"><span>Invoice No:</span> <span>{invoice.id}</span></div>
@@ -637,7 +681,8 @@ const CreateInvoice = () => {
                             <div className="row"><span>P.O. Date:</span> <span>{invoice.po_date || '-'}</span></div>
                             <div className="row"><span>Transport:</span> <span>{invoice.transport_mode || '-'}</span></div>
                             <div className="row"><span>Vendor Code:</span> <span>{invoice.vendor_code || '-'}</span></div>
-                            <div className="row"><span>State, Code:</span> <span>{invoice.state || '-'}, {invoice.state_code || '-'}</span></div>
+                            <div className="row"><span>Your DC No:</span> <span>{invoice.dc_no || '-'}</span></div>
+                            <div className="row"><span>Your DC Date:</span> <span>{invoice.dc_date || '-'}</span></div>
                         </div>
                     </div>
 
@@ -646,7 +691,7 @@ const CreateInvoice = () => {
                             <tr>
                                 <th style={{ width: '40px', textAlign: 'center' }}>S.No</th>
                                 <th style={{ width: '150px', textAlign: 'center' }}>Part Name</th>
-                                <th style={{ width: '100px', textAlign: 'center' }}>Part No.</th>
+                                <th style={{ width: '100px', textAlign: 'center' }}>Part Number</th>
                                 <th style={{ width: '100px', textAlign: 'center' }}>Process</th>
                                 <th style={{ width: '60px', textAlign: 'center' }}>Qty</th>
                                 <th style={{ width: '80px', textAlign: 'center' }}>Rate</th>
@@ -658,7 +703,7 @@ const CreateInvoice = () => {
                                 <tr key={i}>
                                     <td style={{ textAlign: 'center' }}>{i + 1}</td>
                                     <td style={{ textAlign: 'center' }}>{item.name || '-'}</td>
-                                    <td style={{ textAlign: 'center' }}>{item.sku || '-'}</td>
+                                    <td style={{ textAlign: 'center' }}>{item.part_number || '-'}</td>
                                     <td style={{ textAlign: 'center' }}>{item.process || '-'}</td>
                                     <td style={{ textAlign: 'center' }}>{item.qty}</td>
                                     <td style={{ textAlign: 'center' }}>₹{item.rate}</td>
@@ -666,7 +711,15 @@ const CreateInvoice = () => {
                                 </tr>
                             ))}
                             {Array.from({ length: Math.max(0, 15 - invoice.items.length) }).map((_, i) => (
-                                <tr key={`empty-${i}`} className="empty-row"><td colSpan={7}>&nbsp;</td></tr>
+                                <tr key={`empty-${i}`} className="empty-row">
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                </tr>
                             ))}
                         </tbody>
                     </table>
@@ -679,7 +732,7 @@ const CreateInvoice = () => {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                                         <span>(Service)</span>
                                         <div style={{ width: '15px', height: '15px', border: '1px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            {invoice.invoice_type === 'Service' && '✓'}
+                                            {invoice.invoice_type.includes('Service') && '✓'}
                                         </div>
                                     </div>
                                 </div>
@@ -688,14 +741,14 @@ const CreateInvoice = () => {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                                         <span>(Sale)</span>
                                         <div style={{ width: '15px', height: '15px', border: '1px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            {invoice.invoice_type === 'Sale' && '✓'}
+                                            {invoice.invoice_type.includes('Sale') && '✓'}
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div className="amount-words" style={{ marginTop: '10px' }}>
                                 <p><strong>Total Invoice Amount in Words:</strong></p>
-                                <p style={{ textTransform: 'capitalize' }}>Rupees {toWords(Math.round(totals.total))} Only</p>
+                                <p style={{ textTransform: 'capitalize' }}>{amountToWords(totals.total)}</p>
                                 <p style={{ fontStyle: 'italic', fontWeight: 'bold', marginTop: '10px' }}>Received the goods in good condition</p>
                             </div>
                         </div>
@@ -730,9 +783,11 @@ const CreateInvoice = () => {
                 .inv-details { font-size: 13px; }
                 .inv-details .row { display: flex; justify-content: space-between; border-bottom: 1px solid black; padding: 2px 5px; }
                 .inv-details .row:last-child { border-bottom: none; }
-                .inv-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+                .inv-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; border: 1px solid black; }
                 .inv-table th { border: 1px solid black; padding: 5px; background: #f0f0f0; }
-                .inv-table td { border: 1px solid black; padding: 4px 5px; vertical-align: middle; word-wrap: break-word; }
+                .inv-table td { border: 1px solid black; border-top: none; border-bottom: none; padding: 4px 5px; vertical-align: middle; word-wrap: break-word; }
+                .inv-table tr { border-bottom: 1px solid black; }
+                .inv-table tr:last-child { border-bottom: none; }
                 .table-input { border: none; width: 100%; background: transparent; font-family: inherit; padding: 0 0 2px 0; height: auto; }
                 .empty-row td { height: 24px; }
                 .inv-footer-section { display: grid; grid-template-columns: 1.5fr 1fr; border: 1px solid black; border-top: none; }

@@ -51,6 +51,8 @@
     --glow-primary: 0 4px 12px rgba(99, 102, 241, 0.25);
     --glow-accent: 0 4px 12px rgba(236, 72, 153, 0.25);
 
+    --gradient-title: linear-gradient(to right, var(--text-primary), var(--primary));
+
     /* Spacing */
     --spacing-xs: 0.25rem;
     --spacing-sm: 0.5rem;
@@ -118,6 +120,8 @@
     /* Shadows instead of Glows */
     --glow-primary: 0 4px 12px rgba(0, 0, 0, 0.3);
     --glow-accent: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+    --gradient-title: linear-gradient(to right, #ffffff, var(--primary));
 }
 
 body {

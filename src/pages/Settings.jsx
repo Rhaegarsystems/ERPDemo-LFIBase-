@@ -1,11 +1,179 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
-import { Moon, Sun, Monitor, Info, Code, Cpu, Calendar, Shield } from 'lucide-react';
+import { Moon, Sun, Monitor, Info, Code, Cpu, Calendar, Shield, Database, Download, Upload, Cloud, CloudOff, RefreshCw, LogOut, Terminal, Copy } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
+import { save, open } from '@tauri-apps/plugin-dialog';
+import { writeText } from '@tauri-apps/plugin-clipboard-manager';
+import AlertModal from '../components/AlertModal';
 import '../styles/PageCommon.css';
+import '../styles/Settings.css';
 
 const Settings = () => {
     const { theme, toggleTheme } = useTheme();
+    const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'success', title: '', message: '' });
+    const [isConnected, setIsConnected] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
+    
+    // Developer Mode State
+    const [versionClicks, setVersionClicks] = useState(0);
+    const [showPinPrompt, setShowPinPrompt] = useState(false);
+    const [pinInput, setPinInput] = useState('');
+    const [isDevMode, setIsDevMode] = useState(false);
+    const [dbKey, setDbKey] = useState('');
+
+    useEffect(() => {
+        const checkConnection = async () => {
+            try {
+                const connected = await invoke('is_google_drive_connected');
+                setIsConnected(connected);
+            } catch (e) {
+                console.error("Failed to check GDrive connection:", e);
+            }
+        };
+        checkConnection();
+    }, []);
+
+    useEffect(() => {
+        if (isDevMode) {
+            const fetchKey = async () => {
+                try {
+                    const key = await invoke('get_database_key');
+                    setDbKey(key);
+                } catch (e) {
+                    console.error("Failed to fetch DB key:", e);
+                }
+            };
+            fetchKey();
+        }
+    }, [isDevMode]);
+
+    const handleVersionClick = () => {
+        if (isDevMode) return;
+        const newClicks = versionClicks + 1;
+        setVersionClicks(newClicks);
+        if (newClicks >= 5) {
+            setShowPinPrompt(true);
+            setVersionClicks(0);
+        }
+    };
+
+    const handlePinSubmit = async () => {
+        try {
+            const actualPin = await invoke('get_dev_pin');
+            if (pinInput === actualPin) {
+                setIsDevMode(true);
+                setShowPinPrompt(false);
+                setPinInput('');
+                setAlertConfig({ isOpen: true, type: 'success', title: 'Developer Mode', message: 'Developer tools have been enabled.' });
+            } else {
+                setAlertConfig({ isOpen: true, type: 'error', title: 'Invalid PIN', message: 'The developer PIN you entered is incorrect.' });
+                setPinInput('');
+            }
+        } catch (e) {
+            setAlertConfig({ isOpen: true, type: 'error', title: 'Error', message: String(e) });
+        }
+    };
+
+    const copyToClipboard = async (text) => {
+        try {
+            await writeText(text);
+            setAlertConfig({ isOpen: true, type: 'success', title: 'Copied', message: 'Encryption key copied to clipboard.' });
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleBackup = async () => {
+        try {
+            const filePath = await save({
+                filters: [{ name: 'Database', extensions: ['db'] }],
+                defaultPath: 'littleflower_backup.db'
+            });
+
+            if (filePath) {
+                await invoke('export_db', { path: filePath });
+                setAlertConfig({ isOpen: true, type: 'success', title: 'Local Backup Successful', message: `Database backed up to ${filePath}.` });
+            }
+        } catch (e) {
+            setAlertConfig({ isOpen: true, type: 'error', title: 'Backup Failed', message: String(e) });
+        }
+    };
+
+    const handleRestore = async () => {
+        try {
+            const filePath = await open({
+                filters: [{ name: 'Database', extensions: ['db'] }],
+                multiple: false
+            });
+
+            if (filePath) {
+                await invoke('import_db', { path: filePath });
+                setAlertConfig({ isOpen: true, type: 'success', title: 'Restore Successful', message: 'Database restored. Please restart the application to apply changes.' });
+            }
+        } catch (e) {
+            setAlertConfig({ isOpen: true, type: 'error', title: 'Restore Failed', message: String(e) });
+        }
+    };
+
+    const handleConnectGDrive = async () => {
+        try {
+            const result = await invoke('connect_google_drive');
+            setIsConnected(true);
+            setAlertConfig({ isOpen: true, type: 'success', title: 'Google Drive Connected', message: result });
+        } catch (e) {
+            setAlertConfig({ isOpen: true, type: 'error', title: 'Connection Failed', message: String(e) });
+        }
+    };
+
+    const handleGDriveBackup = async () => {
+        setIsSyncing(true);
+        try {
+            const result = await invoke('backup_now');
+            setAlertConfig({ isOpen: true, type: 'success', title: 'Cloud Backup Successful', message: result });
+        } catch (e) {
+            setAlertConfig({ isOpen: true, type: 'error', title: 'Cloud Backup Failed', message: String(e) });
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    const handleGDriveRestore = async () => {
+        setIsSyncing(true);
+        try {
+            const result = await invoke('restore_now');
+            setAlertConfig({ isOpen: true, type: 'success', title: 'Cloud Restore Successful', message: result });
+        } catch (e) {
+            setAlertConfig({ isOpen: true, type: 'error', title: 'Cloud Restore Failed', message: String(e) });
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    const handleDisconnectGDrive = async () => {
+        try {
+            await invoke('disconnect_google_drive');
+            setIsConnected(false);
+            setAlertConfig({ isOpen: true, type: 'success', title: 'Disconnected', message: 'Successfully disconnected from Google Drive.' });
+        } catch (e) {
+            setAlertConfig({ isOpen: true, type: 'error', title: 'Error', message: String(e) });
+        }
+    };
+
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: { opacity: 1, y: 0 }
+    };
 
     return (
         <div className="page-content">
@@ -22,239 +190,271 @@ const Settings = () => {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.1 }}
-                        className="text-muted"
+                        className="page-subtitle"
                     >
-                        Manage your application preferences
+                        Manage your application preferences and data
                     </motion.p>
                 </div>
             </header>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <motion.div 
+                className="settings-container"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+            >
                 {/* Appearance Card */}
-                <motion.div
-                    className="card"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                        <Monitor size={22} style={{ color: 'var(--primary)' }} />
-                        <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>Appearance</h2>
+                <motion.div className="settings-card" variants={itemVariants}>
+                    <div className="settings-card-header">
+                        <div className="settings-card-icon">
+                            <Monitor size={20} />
+                        </div>
+                        <h2 className="settings-card-title">Appearance</h2>
                     </div>
 
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '1rem',
-                        background: 'var(--bg-tertiary)',
-                        borderRadius: 'var(--radius-md)',
-                        border: '1px solid var(--border)'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{
-                                width: '48px',
-                                height: '48px',
-                                borderRadius: '50%',
-                                background: 'var(--bg-secondary)',
-                                border: '1px solid var(--border)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
-                                {theme === 'light'
-                                    ? <Sun size={24} style={{ color: '#f59e0b' }} />
-                                    : <Moon size={24} style={{ color: 'var(--primary)' }} />
-                                }
+                    <div className="settings-section">
+                        <div className="appearance-toggle-row">
+                            <div className="appearance-info">
+                                <div className="appearance-icon-box">
+                                    {theme === 'light'
+                                        ? <Sun size={22} style={{ color: '#f59e0b' }} />
+                                        : <Moon size={22} style={{ color: 'var(--primary)' }} />
+                                    }
+                                </div>
+                                <div className="appearance-text">
+                                    <h3>App Theme</h3>
+                                    <p>Switch between light and dark modes.</p>
+                                </div>
                             </div>
+
+                            <label className="settings-toggle">
+                                <input
+                                    type="checkbox"
+                                    checked={theme === 'dark'}
+                                    onChange={toggleTheme}
+                                />
+                                <span className="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 'auto' }}>
+                        Visual preferences are saved locally and persist across sessions.
+                    </p>
+                </motion.div>
+
+                {/* Data Management Card */}
+                <motion.div className="settings-card" variants={itemVariants} style={{ height: 'auto' }}>
+                    <div className="settings-card-header">
+                        <div className="settings-card-icon" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+                            <Database size={20} />
+                        </div>
+                        <h2 className="settings-card-title">Cloud Backup (Google Drive)</h2>
+                    </div>
+
+                    <div className="settings-section">
+                        {!isConnected ? (
+                            <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+                                <div style={{ 
+                                    width: '60px', 
+                                    height: '60px', 
+                                    borderRadius: '50%', 
+                                    background: 'rgba(107, 114, 128, 0.1)', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center',
+                                    margin: '0 auto 1rem'
+                                }}>
+                                    <CloudOff size={30} style={{ color: 'var(--text-muted)' }} />
+                                </div>
+                                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                                    Connect your Google account to enable automatic cloud backups and cross-device synchronization.
+                                </p>
+                                <button className="btn-primary-glow" onClick={handleConnectGDrive} style={{ width: '100%' }}>
+                                    <Cloud size={18} /> Connect Google Drive
+                                </button>
+                            </div>
+                        ) : (
                             <div>
-                                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 500 }}>App Theme</h3>
-                                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                                    {theme === 'light' ? 'Light Mode' : 'Dark Mode'}
+                                <div style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '0.75rem', 
+                                    padding: '0.75rem',
+                                    background: 'rgba(16, 185, 129, 0.1)',
+                                    borderRadius: 'var(--radius-md)',
+                                    marginBottom: '1.5rem',
+                                    border: '1px solid rgba(16, 185, 129, 0.2)'
+                                }}>
+                                    <Cloud size={20} style={{ color: '#10b981' }} />
+                                    <div style={{ flex: 1 }}>
+                                        <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: '#10b981' }}>Connected to Google Drive</p>
+                                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Cloud synchronization active</p>
+                                    </div>
+                                    <button 
+                                        onClick={handleDisconnectGDrive}
+                                        style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                                        title="Disconnect account"
+                                    >
+                                        <LogOut size={16} />
+                                    </button>
+                                </div>
+
+                                <div className="database-actions" style={{ marginBottom: '1rem' }}>
+                                    <button 
+                                        className="btn-glass" 
+                                        onClick={handleGDriveBackup} 
+                                        disabled={isSyncing}
+                                        style={{ justifyContent: 'center', padding: '0.8rem', flex: 1 }}
+                                    >
+                                        {isSyncing ? <RefreshCw size={18} className="spin" /> : <Upload size={18} />} 
+                                        {isSyncing ? 'Syncing...' : 'Backup to Cloud'}
+                                    </button>
+                                    <button 
+                                        className="btn-glass" 
+                                        onClick={handleGDriveRestore} 
+                                        disabled={isSyncing}
+                                        style={{ justifyContent: 'center', padding: '0.8rem', flex: 1 }}
+                                    >
+                                        {isSyncing ? <RefreshCw size={18} className="spin" /> : <Download size={18} />} 
+                                        {isSyncing ? 'Syncing...' : 'Restore from Cloud'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '1rem' }}>
+                            <p style={{ margin: '0 0 1rem 0', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Local Backup</p>
+                            <div className="database-actions">
+                                <button className="btn-glass" onClick={handleBackup} style={{ justifyContent: 'center', padding: '0.6rem', fontSize: '0.8rem' }}>
+                                    <Download size={16} /> Export DB
+                                </button>
+                                <button className="btn-glass" onClick={handleRestore} style={{ justifyContent: 'center', padding: '0.6rem', fontSize: '0.8rem' }}>
+                                    <Upload size={16} /> Import DB
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* System Info Card */}
+                <motion.div className="settings-card" variants={itemVariants} style={{ gridColumn: '1 / -1' }}>
+                    <div className="settings-card-header">
+                        <div className="settings-card-icon" style={{ background: 'rgba(107, 114, 128, 0.1)', color: 'var(--text-secondary)' }}>
+                            <Info size={20} />
+                        </div>
+                        <h2 className="settings-card-title">About This Application</h2>
+                    </div>
+
+                    <div className="about-header">
+                        <h3 className="about-app-name">Little Flower Industries</h3>
+                        <p className="about-description">
+                            A comprehensive solution designed for managing inventory, customers, and invoicing.
+                        </p>
+                    </div>
+
+                    <div className="tech-info-grid">
+                        <div className="tech-info-item" onClick={handleVersionClick} style={{ cursor: 'pointer' }}>
+                            <Code size={18} className="tech-info-icon" />
+                            <div>
+                                <p className="tech-info-label">Version</p>
+                                <p className="tech-info-value">1.2.0</p>
+                            </div>
+                        </div>
+
+                        <div className="tech-info-item">
+                            <Calendar size={18} className="tech-info-icon" style={{ color: '#f59e0b' }} />
+                            <div>
+                                <p className="tech-info-label">Build Date</p>
+                                <p className="tech-info-value">Feb 2026</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* PIN Prompt Section */}
+                    {showPinPrompt && !isDevMode && (
+                        <motion.div 
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            style={{ 
+                                marginTop: '1.5rem', 
+                                padding: '1rem', 
+                                background: 'rgba(139, 92, 246, 0.1)', 
+                                borderRadius: 'var(--radius-md)',
+                                border: '1px solid var(--primary)'
+                            }}
+                        >
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Enter 10-digit Developer PIN:</p>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <input 
+                                    type="password" 
+                                    maxLength={10}
+                                    value={pinInput}
+                                    onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                                    placeholder="Enter PIN"
+                                    className="form-input"
+                                    style={{ textAlign: 'center', letterSpacing: '0.5em', fontWeight: 'bold' }}
+                                />
+                                <button className="btn-primary-glow" onClick={handlePinSubmit}>Unlock</button>
+                                <button className="btn-ghost" onClick={() => { setShowPinPrompt(false); setPinInput(''); }}>Cancel</button>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* Hidden Developer Section */}
+                    {isDevMode && (
+                        <div style={{ 
+                            marginTop: '2rem', 
+                            padding: '1.5rem', 
+                            background: 'rgba(0, 0, 0, 0.2)', 
+                            border: '1px solid var(--border)', 
+                            borderRadius: 'var(--radius-md)' 
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--primary)' }}>
+                                <Terminal size={18} />
+                                <h4 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Developer Tools</h4>
+                            </div>
+                            
+                            <div className="form-group">
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Database Encryption Key</label>
+                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                    <input 
+                                        type="text" 
+                                        readOnly 
+                                        value={dbKey} 
+                                        className="form-input" 
+                                        style={{ fontFamily: 'monospace', fontSize: '0.8rem', background: 'var(--bg-tertiary)' }} 
+                                    />
+                                    <button 
+                                        className="btn-glass" 
+                                        onClick={() => copyToClipboard(dbKey)}
+                                        style={{ padding: '0 1rem' }}
+                                    >
+                                        <Copy size={16} />
+                                    </button>
+                                </div>
+                                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                                    Use this key with "DB Browser for SQLite" (SQLCipher version) to open the database file manually.
                                 </p>
                             </div>
                         </div>
+                    )}
 
-                        <label className="theme-toggle">
-                            <input
-                                type="checkbox"
-                                checked={theme === 'dark'}
-                                onChange={toggleTheme}
-                            />
-                            <span className="slider"></span>
-                        </label>
+                    <div className="developer-tag">
+                        <p className="dev-label">Built and maintained by</p>
+                        <p className="dev-name">Rhaegarsystems</p>
+                        <p className="copyright">© 2026 Little Flower Industries. All rights reserved.</p>
                     </div>
                 </motion.div>
+            </motion.div>
 
-                {/* System Info Card - Detailed */}
-                <motion.div
-                    className="card"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                        <Info size={22} style={{ color: 'var(--text-secondary)' }} />
-                        <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>About This App</h2>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {/* App Name & Version */}
-                        <div style={{
-                            padding: '1rem',
-                            background: 'var(--bg-tertiary)',
-                            borderRadius: 'var(--radius-md)',
-                            border: '1px solid var(--border)'
-                        }}>
-                            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem', fontWeight: 700, color: 'var(--primary)' }}>
-                                Little Flower Industries ERP
-                            </h3>
-                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                A comprehensive Enterprise Resource Planning solution designed for managing inventory, customers, invoicing, and stock movements.
-                            </p>
-                        </div>
-
-                        {/* Technical Details Grid */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.75rem',
-                                padding: '0.75rem 1rem',
-                                background: 'var(--bg-tertiary)',
-                                borderRadius: 'var(--radius-md)',
-                                border: '1px solid var(--border)'
-                            }}>
-                                <Code size={18} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                                <div>
-                                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Version</p>
-                                    <p style={{ margin: 0, fontWeight: 600, color: 'var(--text-primary)' }}>1.1.0</p>
-                                </div>
-                            </div>
-
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.75rem',
-                                padding: '0.75rem 1rem',
-                                background: 'var(--bg-tertiary)',
-                                borderRadius: 'var(--radius-md)',
-                                border: '1px solid var(--border)'
-                            }}>
-                                <Cpu size={18} style={{ color: '#10b981', flexShrink: 0 }} />
-                                <div>
-                                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Framework</p>
-                                    <p style={{ margin: 0, fontWeight: 600, color: 'var(--text-primary)' }}>Tauri 2.0 + React 19</p>
-                                </div>
-                            </div>
-
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.75rem',
-                                padding: '0.75rem 1rem',
-                                background: 'var(--bg-tertiary)',
-                                borderRadius: 'var(--radius-md)',
-                                border: '1px solid var(--border)'
-                            }}>
-                                <Shield size={18} style={{ color: '#3b82f6', flexShrink: 0 }} />
-                                <div>
-                                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Database</p>
-                                    <p style={{ margin: 0, fontWeight: 600, color: 'var(--text-primary)' }}>SQLite (Local)</p>
-                                </div>
-                            </div>
-
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.75rem',
-                                padding: '0.75rem 1rem',
-                                background: 'var(--bg-tertiary)',
-                                borderRadius: 'var(--radius-md)',
-                                border: '1px solid var(--border)'
-                            }}>
-                                <Calendar size={18} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                                <div>
-                                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Build</p>
-                                    <p style={{ margin: 0, fontWeight: 600, color: 'var(--text-primary)' }}>Feb 2026</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Built by Rhaegarsystems */}
-                        <div style={{
-                            padding: '1.25rem',
-                            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
-                            borderRadius: 'var(--radius-md)',
-                            border: '1px solid rgba(139, 92, 246, 0.2)',
-                            textAlign: 'center',
-                            maxWidth: '300px',
-                            margin: '0 auto'
-                        }}>
-                            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                                Built and maintained by
-                            </p>
-                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary)' }}>
-                                Rhaegarsystems
-                            </p>
-                        </div>
-
-                        <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                            © 2026 Little Flower Industries. All rights reserved.
-                        </p>
-                    </div>
-                </motion.div>
-            </div>
-
-            <style>{`
-                .theme-toggle {
-                    position: relative;
-                    display: inline-block;
-                    width: 50px;
-                    height: 26px;
-                }
-                
-                .theme-toggle input {
-                    opacity: 0;
-                    width: 0;
-                    height: 0;
-                }
-                
-                .theme-toggle .slider {
-                    position: absolute;
-                    cursor: pointer;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background-color: var(--bg-secondary);
-                    border: 1px solid var(--border);
-                    transition: 0.3s;
-                    border-radius: 34px;
-                }
-                
-                .theme-toggle .slider:before {
-                    position: absolute;
-                    content: "";
-                    height: 20px;
-                    width: 20px;
-                    left: 2px;
-                    bottom: 2px;
-                    background-color: var(--text-primary);
-                    transition: 0.3s;
-                    border-radius: 50%;
-                }
-                
-                .theme-toggle input:checked + .slider {
-                    background-color: var(--primary);
-                    border-color: var(--primary);
-                }
-                
-                .theme-toggle input:checked + .slider:before {
-                    transform: translateX(24px);
-                    background-color: white;
-                }
-            `}</style>
+            <AlertModal
+                isOpen={alertConfig.isOpen}
+                onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+                type={alertConfig.type}
+                title={alertConfig.title}
+                message={alertConfig.message}
+            />
         </div>
     );
 };

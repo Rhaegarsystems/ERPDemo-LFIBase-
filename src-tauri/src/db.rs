@@ -1,36 +1,79 @@
 use rusqlite::{Connection, Result};
 use std::fs;
+use std::sync::OnceLock;
 use tauri::AppHandle;
 use tauri::Manager;
+use keyring::Entry;
+use uuid::Uuid;
 
-pub fn init_db(app_handle: &AppHandle) -> Result<Connection> {
-    let app_dir = app_handle
+const DB_KEY_ACCOUNT: &str = "database_encryption_key";
+const SERVICE_NAME: &str = "LittleFlowerIndustries-Backup";
+
+// Cache the key in memory to ensure same key is used throughout the session
+static CACHED_KEY: OnceLock<String> = OnceLock::new();
+
+pub fn get_db_path(app_handle: &AppHandle) -> std::path::PathBuf {
+    app_handle
         .path()
         .app_data_dir()
-        .expect("failed to get app data dir");
+        .expect("failed to get app data dir")
+        .join("littleflower.db")
+}
 
-    if !app_dir.exists() {
-        fs::create_dir_all(&app_dir).expect("failed to create app data dir");
+pub fn get_or_create_db_key(app_handle: &AppHandle) -> Result<String, String> {
+    // 1. Check memory cache
+    if let Some(key) = CACHED_KEY.get() {
+        return Ok(key.clone());
     }
 
-    let db_path = app_dir.join("littleflower.db");
-    let conn = Connection::open(db_path)?;
+    let app_dir = app_handle.path().app_data_dir().expect("failed to get app data dir");
+    let key_file_path = app_dir.join("secret.key");
 
-    // Inventory - Simplified (removed category, hsn, status from active use)
+    // 2. Try OS Keyring
+    let entry = Entry::new(SERVICE_NAME, DB_KEY_ACCOUNT).map_err(|e| e.to_string())?;
+    let key = match entry.get_password() {
+        Ok(k) => k,
+        Err(_) => {
+            // 3. Try Fallback Key File
+            if key_file_path.exists() {
+                fs::read_to_string(&key_file_path).map_err(|e| e.to_string())?
+            } else {
+                // 4. Generate New Key
+                let new_key = format!("{}-{}", Uuid::new_v4(), Uuid::new_v4()).replace("-", "");
+                
+                // Try to save to keyring (might fail on some systems)
+                let _ = entry.set_password(&new_key);
+                
+                // Save to fallback file
+                let _ = fs::write(&key_file_path, &new_key);
+                
+                new_key
+            }
+        }
+    };
+
+    // Store in cache
+    let _ = CACHED_KEY.set(key.clone());
+    Ok(key)
+}
+
+pub fn ensure_tables(conn: &Connection) -> Result<(), String> {
+    // Inventory
     conn.execute(
         "CREATE TABLE IF NOT EXISTS inventory (
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
-            sku TEXT NOT NULL UNIQUE,
-            stock INTEGER DEFAULT 0,
+            part_number INTEGER UNIQUE,
+            sku TEXT,
             price REAL DEFAULT 0.0,
             process TEXT
         )",
         [],
-    )?;
-    let _ = conn.execute("ALTER TABLE inventory ADD COLUMN process TEXT", []);
+    ).map_err(|e| e.to_string())?;
+    let _ = conn.execute("ALTER TABLE inventory ADD COLUMN process TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE inventory ADD COLUMN part_number INTEGER", []).ok();
 
-    // Customers - Added vendor_code
+    // Customers
     conn.execute(
         "CREATE TABLE IF NOT EXISTS customers (
             id INTEGER PRIMARY KEY,
@@ -43,18 +86,20 @@ pub fn init_db(app_handle: &AppHandle) -> Result<Connection> {
             state TEXT,
             state_code TEXT,
             vendor_code TEXT,
+            pincode TEXT,
             orders INTEGER DEFAULT 0,
             total_value REAL DEFAULT 0.0
         )",
         [],
-    )?;
-    let _ = conn.execute("ALTER TABLE customers ADD COLUMN vendor_code TEXT", []);
-    let _ = conn.execute("ALTER TABLE customers ADD COLUMN address TEXT", []);
-    let _ = conn.execute("ALTER TABLE customers ADD COLUMN gstin TEXT", []);
-    let _ = conn.execute("ALTER TABLE customers ADD COLUMN state TEXT", []);
-    let _ = conn.execute("ALTER TABLE customers ADD COLUMN state_code TEXT", []);
+    ).map_err(|e| e.to_string())?;
+    let _ = conn.execute("ALTER TABLE customers ADD COLUMN vendor_code TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE customers ADD COLUMN address TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE customers ADD COLUMN gstin TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE customers ADD COLUMN state TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE customers ADD COLUMN state_code TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE customers ADD COLUMN pincode TEXT", []).ok();
 
-    // Invoices - Added vendor_code, invoice_type
+    // Invoices
     conn.execute(
         "CREATE TABLE IF NOT EXISTS invoices (
             id TEXT PRIMARY KEY,
@@ -70,24 +115,30 @@ pub fn init_db(app_handle: &AppHandle) -> Result<Connection> {
             po_date TEXT,
             transport_mode TEXT,
             invoice_type TEXT,
-            items_json TEXT
+            items_json TEXT,
+            hsn_code TEXT,
+            sac_code TEXT,
+            state TEXT,
+            state_code TEXT,
+            pincode TEXT
         )",
         [],
-    )?;
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN client_name TEXT", []);
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN vendor_code TEXT", []);
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN transport_mode TEXT", []);
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN invoice_type TEXT", []);
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN items_json TEXT", []);
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN dc_no TEXT", []);
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN dc_date TEXT", []);
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN po_no TEXT", []);
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN po_date TEXT", []);
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN due_date TEXT", []);
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN hsn_code TEXT", []);
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN sac_code TEXT", []);
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN state TEXT", []);
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN state_code TEXT", []);
+    ).map_err(|e| e.to_string())?;
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN client_name TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN vendor_code TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN transport_mode TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN invoice_type TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN items_json TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN dc_no TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN dc_date TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN po_no TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN po_date TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN due_date TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN hsn_code TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN sac_code TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN state TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN state_code TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN pincode TEXT", []).ok();
 
     // Activity Logs
     conn.execute(
@@ -100,31 +151,55 @@ pub fn init_db(app_handle: &AppHandle) -> Result<Connection> {
             timestamp TEXT
         )",
         [],
-    )?;
+    ).map_err(|e| e.to_string())?;
 
-    // Stock Logs
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS stock_logs (
-            id INTEGER PRIMARY KEY,
-            item_name TEXT,
-            sku TEXT,
-            type TEXT,
-            quantity INTEGER,
-            date TEXT,
-            user TEXT
-        )",
-        [],
-    )?;
-
-    Ok(conn)
+    Ok(())
 }
 
-pub fn get_db_path(app_handle: &AppHandle) -> std::path::PathBuf {
+pub fn open_encrypted_conn(app_handle: &AppHandle) -> Result<Connection, String> {
+    let db_path = get_db_path(app_handle);
+    let key = get_or_create_db_key(app_handle)?;
+    
+    let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
+    
+    // Apply encryption key
+    conn.pragma_update(None, "key", &key).map_err(|e| e.to_string())?;
+    
+    // Test connection
+    match conn.query_row("SELECT count(*) FROM sqlite_master", [], |_| Ok(())) {
+        Ok(_) => {
+            ensure_tables(&conn)?;
+            Ok(conn)
+        },
+        Err(_) => {
+            // If it fails (e.g. wrong key, or file is not encrypted), delete and start fresh
+            println!("Database incompatible or corrupted. Starting fresh...");
+            drop(conn);
+            let _ = fs::remove_file(&db_path);
+            
+            // Create new encrypted database
+            let new_conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
+            new_conn.pragma_update(None, "key", &key).map_err(|e| e.to_string())?;
+            
+            // Initialize tables immediately
+            ensure_tables(&new_conn)?;
+            
+            Ok(new_conn)
+        }
+    }
+}
+
+pub fn init_db(app_handle: &AppHandle) -> Result<Connection, String> {
     let app_dir = app_handle
         .path()
         .app_data_dir()
         .expect("failed to get app data dir");
-    app_dir.join("littleflower.db")
+
+    if !app_dir.exists() {
+        fs::create_dir_all(&app_dir).expect("failed to create app data dir");
+    }
+
+    open_encrypted_conn(app_handle)
 }
 
 // --- Activity Logging ---
@@ -190,8 +265,13 @@ pub fn get_dashboard_stats(conn: &Connection) -> Result<DashboardStats> {
     let customers: i32 = conn
         .query_row("SELECT COUNT(*) FROM customers", [], |r| r.get(0))
         .unwrap_or(0);
+    // Modified to count only current month invoices
     let total_invoices: i32 = conn
-        .query_row("SELECT COUNT(*) FROM invoices", [], |r| r.get(0))
+        .query_row(
+            "SELECT COUNT(*) FROM invoices WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')",
+            [],
+            |r| r.get(0),
+        )
         .unwrap_or(0);
     let active_orders: i32 = conn
         .query_row(
@@ -234,22 +314,20 @@ pub fn get_revenue_history(conn: &Connection) -> Result<Vec<RevenuePoint>> {
 pub struct InventoryItem {
     pub id: Option<i64>,
     pub name: String,
-    pub sku: String,
-    pub stock: i64,
+    pub part_number: Option<i64>,
     pub price: f64,
     pub process: String,
 }
 
 pub fn get_inventory(conn: &Connection) -> Result<Vec<InventoryItem>> {
-    let mut stmt = conn.prepare("SELECT id, name, sku, stock, price, process FROM inventory")?;
+    let mut stmt = conn.prepare("SELECT id, name, part_number, price, process FROM inventory")?;
     let item_iter = stmt.query_map([], |row| {
         Ok(InventoryItem {
             id: row.get(0)?,
             name: row.get(1)?,
-            sku: row.get(2)?,
-            stock: row.get(3)?,
-            price: row.get(4)?,
-            process: row.get(5).unwrap_or_default(),
+            part_number: row.get(2)?,
+            price: row.get(3)?,
+            process: row.get(4).unwrap_or_default(),
         })
     })?;
     let mut items = Vec::new();
@@ -261,11 +339,10 @@ pub fn get_inventory(conn: &Connection) -> Result<Vec<InventoryItem>> {
 
 pub fn add_item(conn: &Connection, item: &InventoryItem) -> Result<()> {
     conn.execute(
-        "INSERT INTO inventory (name, sku, stock, price, process) VALUES (?1, ?2, ?3, ?4, ?5)",
+        "INSERT INTO inventory (name, part_number, price, process) VALUES (?1, ?2, ?3, ?4)",
         (
             &item.name,
-            &item.sku,
-            &item.stock,
+            &item.part_number,
             &item.price,
             &item.process,
         ),
@@ -275,18 +352,17 @@ pub fn add_item(conn: &Connection, item: &InventoryItem) -> Result<()> {
         "Created",
         "Product",
         &item.name,
-        &format!("Added SKU: {}", item.sku),
+        &format!("Added Part: {:?}", item.part_number),
     )?;
     Ok(())
 }
 
 pub fn update_item(conn: &Connection, item: &InventoryItem) -> Result<()> {
     conn.execute(
-        "UPDATE inventory SET name=?1, sku=?2, stock=?3, price=?4, process=?5 WHERE id=?6",
+        "UPDATE inventory SET name=?1, part_number=?2, price=?3, process=?4 WHERE id=?5",
         (
             &item.name,
-            &item.sku,
-            &item.stock,
+            &item.part_number,
             &item.price,
             &item.process,
             &item.id,
@@ -308,40 +384,6 @@ pub fn delete_item(conn: &Connection, id: i64) -> Result<()> {
     Ok(())
 }
 
-// --- Stock Logs ---
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
-pub struct StockLog {
-    pub id: i64,
-    pub item_name: String,
-    pub sku: String,
-    pub type_: String,
-    pub quantity: i32,
-    pub date: String,
-    pub user: String,
-}
-
-pub fn get_stock_logs(conn: &Connection) -> Result<Vec<StockLog>> {
-    let mut stmt = conn.prepare(
-        "SELECT id, item_name, sku, type, quantity, date, user FROM stock_logs ORDER BY id DESC",
-    )?;
-    let iter = stmt.query_map([], |row| {
-        Ok(StockLog {
-            id: row.get(0)?,
-            item_name: row.get(1)?,
-            sku: row.get(2)?,
-            type_: row.get(3)?,
-            quantity: row.get(4)?,
-            date: row.get(5)?,
-            user: row.get(6)?,
-        })
-    })?;
-    let mut logs = Vec::new();
-    for l in iter {
-        logs.push(l?);
-    }
-    Ok(logs)
-}
-
 // --- Customers ---
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct Customer {
@@ -355,12 +397,13 @@ pub struct Customer {
     pub state: Option<String>,
     pub state_code: Option<String>,
     pub vendor_code: Option<String>,
+    pub pincode: Option<String>,
     pub orders: Option<i32>,
     pub total_value: Option<f64>,
 }
 
 pub fn get_customers(conn: &Connection) -> Result<Vec<Customer>> {
-    let mut stmt = conn.prepare("SELECT id, name, contact, email, phone, address, gstin, state, state_code, vendor_code, orders, total_value FROM customers")?;
+    let mut stmt = conn.prepare("SELECT id, name, contact, email, phone, address, gstin, state, state_code, vendor_code, pincode, orders, total_value FROM customers")?;
     let iter = stmt.query_map([], |row| {
         Ok(Customer {
             id: row.get(0)?,
@@ -373,8 +416,9 @@ pub fn get_customers(conn: &Connection) -> Result<Vec<Customer>> {
             state: row.get(7).unwrap_or(None),
             state_code: row.get(8).unwrap_or(None),
             vendor_code: row.get(9).unwrap_or(None),
-            orders: row.get(10).unwrap_or(Some(0)),
-            total_value: row.get(11).unwrap_or(Some(0.0)),
+            pincode: row.get(10).unwrap_or(None),
+            orders: row.get(11).unwrap_or(Some(0)),
+            total_value: row.get(12).unwrap_or(Some(0.0)),
         })
     })?;
     let mut customers = Vec::new();
@@ -386,8 +430,8 @@ pub fn get_customers(conn: &Connection) -> Result<Vec<Customer>> {
 
 pub fn add_customer(conn: &Connection, customer: &Customer) -> Result<()> {
     conn.execute(
-        "INSERT INTO customers (name, contact, email, phone, address, gstin, state, state_code, vendor_code, orders, total_value) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, 0.0)",
-        (&customer.name, &customer.contact, &customer.email, &customer.phone, &customer.address, &customer.gstin, &customer.state, &customer.state_code, &customer.vendor_code),
+        "INSERT INTO customers (name, contact, email, phone, address, gstin, state, state_code, vendor_code, pincode, orders, total_value) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, 0.0)",
+        (&customer.name, &customer.contact, &customer.email, &customer.phone, &customer.address, &customer.gstin, &customer.state, &customer.state_code, &customer.vendor_code, &customer.pincode),
     )?;
     log_activity(
         conn,
@@ -401,8 +445,8 @@ pub fn add_customer(conn: &Connection, customer: &Customer) -> Result<()> {
 
 pub fn update_customer(conn: &Connection, customer: &Customer) -> Result<()> {
     conn.execute(
-        "UPDATE customers SET name=?1, contact=?2, email=?3, phone=?4, address=?5, gstin=?6, state=?7, state_code=?8, vendor_code=?9 WHERE id=?10",
-        (&customer.name, &customer.contact, &customer.email, &customer.phone, &customer.address, &customer.gstin, &customer.state, &customer.state_code, &customer.vendor_code, &customer.id),
+        "UPDATE customers SET name=?1, contact=?2, email=?3, phone=?4, address=?5, gstin=?6, state=?7, state_code=?8, vendor_code=?9, pincode=?10 WHERE id=?11",
+        (&customer.name, &customer.contact, &customer.email, &customer.phone, &customer.address, &customer.gstin, &customer.state, &customer.state_code, &customer.vendor_code, &customer.pincode, &customer.id),
     )?;
     log_activity(
         conn,
@@ -447,10 +491,11 @@ pub struct Invoice {
     pub sac_code: Option<String>,
     pub state: Option<String>,
     pub state_code: Option<String>,
+    pub pincode: Option<String>,
 }
 
 pub fn get_invoices(conn: &Connection) -> Result<Vec<Invoice>> {
-    let mut stmt = conn.prepare("SELECT id, client_name, vendor_code, date, due_date, amount, status, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, items_json, hsn_code, sac_code, state, state_code FROM invoices")?;
+    let mut stmt = conn.prepare("SELECT id, client_name, vendor_code, date, due_date, amount, status, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, items_json, hsn_code, sac_code, state, state_code, pincode FROM invoices")?;
     let iter = stmt.query_map([], |row| {
         Ok(Invoice {
             id: row.get(0)?,
@@ -471,6 +516,7 @@ pub fn get_invoices(conn: &Connection) -> Result<Vec<Invoice>> {
             sac_code: row.get(15).unwrap_or(None),
             state: row.get(16).unwrap_or(None),
             state_code: row.get(17).unwrap_or(None),
+            pincode: row.get(18).unwrap_or(None),
         })
     })?;
     let mut invoices = Vec::new();
@@ -482,8 +528,8 @@ pub fn get_invoices(conn: &Connection) -> Result<Vec<Invoice>> {
 
 pub fn save_invoice(conn: &Connection, invoice: &Invoice) -> Result<()> {
     conn.execute(
-        "INSERT OR REPLACE INTO invoices (id, client_name, vendor_code, date, due_date, amount, status, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, items_json, hsn_code, sac_code, state, state_code) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
-        rusqlite::params![&invoice.id, &invoice.client_name, &invoice.vendor_code, &invoice.date, &invoice.due_date, &invoice.amount, &invoice.status, &invoice.dc_no, &invoice.dc_date, &invoice.po_no, &invoice.po_date, &invoice.transport_mode, &invoice.invoice_type, &invoice.items_json, &invoice.hsn_code, &invoice.sac_code, &invoice.state, &invoice.state_code],
+        "INSERT OR REPLACE INTO invoices (id, client_name, vendor_code, date, due_date, amount, status, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, items_json, hsn_code, sac_code, state, state_code, pincode) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)",
+        rusqlite::params![&invoice.id, &invoice.client_name, &invoice.vendor_code, &invoice.date, &invoice.due_date, &invoice.amount, &invoice.status, &invoice.dc_no, &invoice.dc_date, &invoice.po_no, &invoice.po_date, &invoice.transport_mode, &invoice.invoice_type, &invoice.items_json, &invoice.hsn_code, &invoice.sac_code, &invoice.state, &invoice.state_code, &invoice.pincode],
     )?;
     log_activity(
         conn,
@@ -496,7 +542,7 @@ pub fn save_invoice(conn: &Connection, invoice: &Invoice) -> Result<()> {
 }
 
 pub fn get_invoice(conn: &Connection, id: &str) -> Result<Invoice> {
-    let mut stmt = conn.prepare("SELECT id, client_name, vendor_code, date, amount, status, items_json, due_date, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, hsn_code, sac_code, state, state_code FROM invoices WHERE id = ?1")?;
+    let mut stmt = conn.prepare("SELECT id, client_name, vendor_code, date, amount, status, items_json, due_date, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, hsn_code, sac_code, state, state_code, pincode FROM invoices WHERE id = ?1")?;
     let invoice = stmt.query_row([id], |row| {
         Ok(Invoice {
             id: row.get(0)?,
@@ -517,6 +563,7 @@ pub fn get_invoice(conn: &Connection, id: &str) -> Result<Invoice> {
             sac_code: row.get(15).unwrap_or_default(),
             state: row.get(16).unwrap_or_default(),
             state_code: row.get(17).unwrap_or_default(),
+            pincode: row.get(18).unwrap_or_default(),
         })
     })?;
     Ok(invoice)
@@ -540,5 +587,18 @@ pub fn update_invoice_status(conn: &Connection, id: &str, status: &str) -> Resul
         id,
         &format!("Status changed to {}", status),
     )?;
+    Ok(())
+}
+
+pub fn export_db(app_handle: &AppHandle, target_path: &std::path::Path) -> Result<(), String> {
+    let source_path = get_db_path(app_handle);
+    std::fs::copy(source_path, target_path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn import_db(app_handle: &AppHandle, source_path: &std::path::Path) -> Result<(), String> {
+    let target_path = get_db_path(app_handle);
+    // Ensure database is not locked (might need careful handling in a real app)
+    std::fs::copy(source_path, target_path).map_err(|e| e.to_string())?;
     Ok(())
 }

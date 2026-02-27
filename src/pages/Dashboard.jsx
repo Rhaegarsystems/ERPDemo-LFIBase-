@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { IndianRupee, Users, ClipboardList, PlusCircle, Edit, Trash2, Save, FileText, User, Box, Activity } from 'lucide-react';
+import { IndianRupee, Users, ClipboardList, PlusCircle, Edit, Trash2, Save, FileText, User, Box, Activity, MapPin, Calendar, Building2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import StatCard from '../components/StatCard';
 import '../styles/Dashboard.css';
@@ -61,12 +61,28 @@ const Dashboard = () => {
         }
     };
 
-    // Stats cards - Only 3 cards now (removed Active Orders)
+    // Date formatting
+    const today = new Date();
+    const dateOptions = { day: '2-digit', month: 'long', year: 'numeric' };
+    const dayOptions = { weekday: 'long' };
+    const formattedDate = today.toLocaleDateString('en-GB', dateOptions);
+    const formattedDay = today.toLocaleDateString('en-GB', dayOptions);
+
+    // Stats cards
     const stats = [
         {
-            title: "Total Revenue",
-            value: `₹${statsData.revenue.toLocaleString('en-IN')}`,
-            icon: <IndianRupee size={24} color="#10b981" />
+            title: "Little Flower Industries",
+            value: (
+                <div style={{ fontSize: '0.85rem', fontWeight: 'normal', lineHeight: '1.4', marginTop: '4px' }}>
+                    <div style={{ color: 'var(--text-primary)', fontWeight: '600', marginBottom: '4px' }}>
+                        No 45/A, Thiruvalluvar Street, TMP Nagar, Padi, Chennai- 600 050
+                    </div>
+                    <div style={{ color: 'var(--primary)' }}>
+                        {formattedDate} | {formattedDay}
+                    </div>
+                </div>
+            ),
+            icon: <Building2 size={24} color="#8b5cf6" />
         },
         {
             title: "Total Customers",
@@ -74,7 +90,7 @@ const Dashboard = () => {
             icon: <Users size={24} color="#3b82f6" />
         },
         {
-            title: "Total Invoices",
+            title: "Current Month Invoices",
             value: statsData.totalInvoices.toString(),
             icon: <FileText size={24} color="#f59e0b" />
         }

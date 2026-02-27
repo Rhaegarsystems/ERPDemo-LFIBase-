@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import lfiLogo from '../assets/logo_ai.png';
 import {
     LayoutDashboard,
     Package,
@@ -17,7 +18,6 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
     const navItems = [
         { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} /> },
         { name: 'Parts', path: '/inventory', icon: <Package size={20} /> },
-        { name: 'Stock', path: '/stock', icon: <BoxSelect size={20} /> },
         { name: 'Customers', path: '/customers', icon: <Users size={20} /> },
         { name: 'Invoices', path: '/invoices', icon: <FileText size={20} /> },
         { name: 'Settings', path: '/settings', icon: <Settings size={20} /> },
@@ -31,7 +31,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
         >
             <div className="sidebar-header">
                 <div className="brand-wrapper">
-                    <span className="brand-logo">LFI</span>
+                    <img src={lfiLogo} alt="LFI" className="brand-logo" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'contain' }} />
                     <AnimatePresence>
                         {!isCollapsed && (
                             <motion.span
@@ -39,6 +39,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
                                 initial={{ opacity: 0, height: 0 }}
                                 animate={{ opacity: 1, height: 'auto' }}
                                 exit={{ opacity: 0, height: 0 }}
+                                style={{ marginLeft: '10px' }}
                             >
                                 Little Flower Industries
                             </motion.span>

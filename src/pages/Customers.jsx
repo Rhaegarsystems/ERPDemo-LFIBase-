@@ -28,18 +28,14 @@ const Customers = () => {
         gstin: '',
         state: '',
         state_code: '',
-        vendor_code: ''
+        vendor_code: '',
+        pincode: ''
     });
 
     const fetchCustomers = async () => {
         try {
             const result = await invoke('get_customers');
-            const formatted = result.map(c => ({
-                ...c,
-                orders: c.orders || 0,
-                total: c.total_value ? `₹${c.total_value.toFixed(2)}` : '₹0.00'
-            }));
-            setData(formatted);
+            setData(result);
         } catch (error) {
             console.error("Failed to fetch customers:", error);
         }
@@ -52,11 +48,8 @@ const Customers = () => {
     const columns = [
         { header: "Customer Name", accessor: "name" },
         { header: "Vendor Code", accessor: "vendor_code" },
-        { header: "Contact", accessor: "contact" },
-        { header: "Email", accessor: "email" },
         { header: "GSTIN", accessor: "gstin" },
         { header: "State", accessor: "state" },
-        { header: "Orders", accessor: "orders" },
     ];
 
     const showAlert = (type, title, message) => {
@@ -76,7 +69,7 @@ const Customers = () => {
             fetchCustomers();
             setNewCustomer({
                 id: null, name: '', contact: '', email: '', phone: '',
-                address: '', gstin: '', state: '', state_code: '', vendor_code: ''
+                address: '', gstin: '', state: '', state_code: '', vendor_code: '', pincode: ''
             });
         } catch (error) {
             console.error("Failed to save customer:", error);
@@ -120,10 +113,9 @@ const Customers = () => {
         { key: 'phone', label: 'Phone Number' },
         { key: 'gstin', label: 'GSTIN' },
         { key: 'address', label: 'Address' },
+        { key: 'pincode', label: 'Pincode' },
         { key: 'state', label: 'State' },
         { key: 'state_code', label: 'State Code' },
-        { key: 'orders', label: 'Total Orders' },
-        { key: 'total', label: 'Total Value' },
     ];
 
     return (
@@ -140,7 +132,7 @@ const Customers = () => {
                     <p className="page-subtitle">Manage client relationships.</p>
                 </div>
                 <button className="btn-primary-glow" onClick={() => {
-                    setNewCustomer({ id: null, name: '', contact: '', email: '', phone: '', address: '', gstin: '', state: '', state_code: '', vendor_code: '' });
+                    setNewCustomer({ id: null, name: '', contact: '', email: '', phone: '', address: '', gstin: '', state: '', state_code: '', vendor_code: '', pincode: '' });
                     setIsModalOpen(true);
                 }}>
                     <Plus size={18} /> Add Customer
@@ -181,7 +173,7 @@ const Customers = () => {
                 }
             >
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                    <div className="form-group" style={{ flex: 2 }}>
+                    <div className="form-group" style={{ flex: 3 }}>
                         <label>Company/Customer Name</label>
                         <input
                             type="text"
@@ -198,7 +190,7 @@ const Customers = () => {
                             className="form-input"
                             value={newCustomer.vendor_code}
                             onChange={(e) => setNewCustomer({ ...newCustomer, vendor_code: e.target.value })}
-                            placeholder="e.g. VC-001"
+                            placeholder="VC-001"
                         />
                     </div>
                 </div>
@@ -209,7 +201,7 @@ const Customers = () => {
                         <input type="text" className="form-input" value={newCustomer.contact}
                             onChange={(e) => setNewCustomer({ ...newCustomer, contact: e.target.value })} />
                     </div>
-                    <div className="form-group" style={{ flex: 1 }}>
+                    <div className="form-group" style={{ flex: 2 }}>
                         <label>GSTIN</label>
                         <input type="text" className="form-input" value={newCustomer.gstin}
                             onChange={(e) => setNewCustomer({ ...newCustomer, gstin: e.target.value })} />
@@ -241,16 +233,22 @@ const Customers = () => {
 
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <div className="form-group" style={{ flex: 1 }}>
+                        <label>Pincode</label>
+                        <input type="text" className="form-input" value={newCustomer.pincode}
+                            onChange={(e) => setNewCustomer({ ...newCustomer, pincode: e.target.value })}
+                            placeholder="600050" />
+                    </div>
+                    <div className="form-group" style={{ flex: 1 }}>
                         <label>State</label>
                         <input type="text" className="form-input" value={newCustomer.state}
                             onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })}
-                            placeholder="e.g. Tamil Nadu" />
+                            placeholder="Tamil Nadu" />
                     </div>
                     <div className="form-group" style={{ flex: 1 }}>
                         <label>State Code</label>
                         <input type="text" className="form-input" value={newCustomer.state_code}
                             onChange={(e) => setNewCustomer({ ...newCustomer, state_code: e.target.value })}
-                            placeholder="e.g. 33" />
+                            placeholder="33" />
                     </div>
                 </div>
             </Modal>

@@ -20,7 +20,7 @@ const PartSelectorModal = ({ isOpen, onClose, inventory, onSelect }) => {
         } else {
             const term = searchTerm.toLowerCase();
             const filtered = (inventory || []).filter(part =>
-                part.sku?.toLowerCase().includes(term) ||
+                String(part.part_number).toLowerCase().includes(term) ||
                 part.name?.toLowerCase().includes(term) ||
                 part.process?.toLowerCase().includes(term)
             );
@@ -79,7 +79,7 @@ const PartSelectorModal = ({ isOpen, onClose, inventory, onSelect }) => {
                                 <Search size={18} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
                                 <input
                                     type="text"
-                                    placeholder="Search by Part No, Name, or Process..."
+                                    placeholder="Search by Part Number, Name, or Process..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     autoFocus
@@ -104,7 +104,7 @@ const PartSelectorModal = ({ isOpen, onClose, inventory, onSelect }) => {
                             borderBottom: '1px solid var(--border)',
                             gap: '1rem'
                         }}>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Part No.</div>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Part Number</div>
                             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Name</div>
                             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Process</div>
                             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Rate</div>
@@ -139,7 +139,7 @@ const PartSelectorModal = ({ isOpen, onClose, inventory, onSelect }) => {
                                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(139, 92, 246, 0.08)'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                     >
-                                        <div style={{ fontWeight: 600, color: 'var(--primary)', fontSize: '0.9rem' }}>{part.sku}</div>
+                                        <div style={{ fontWeight: 600, color: 'var(--primary)', fontSize: '0.9rem' }}>{part.part_number}</div>
                                         <div style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>{part.name}</div>
                                         <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{part.process || '-'}</div>
                                         <div style={{ color: 'var(--success)', fontWeight: 600, fontSize: '0.9rem', textAlign: 'right' }}>₹{part.price?.toFixed(2)}</div>

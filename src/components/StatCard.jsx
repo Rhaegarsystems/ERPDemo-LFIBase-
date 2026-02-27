@@ -18,7 +18,7 @@ const StatCard = ({ title, value, icon, delay = 0 }) => {
             </div>
             <div className="stat-content">
                 <h3 className="stat-title">{title}</h3>
-                <p className="stat-value">{value}</p>
+                <div className="stat-value">{value}</div>
             </div>
         </motion.div>
     );

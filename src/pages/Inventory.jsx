@@ -21,8 +21,7 @@ const Inventory = () => {
   const [newItem, setNewItem] = useState({
     id: null,
     name: '',
-    sku: '',
-    stock: 0,
+    part_number: '',
     price: 0.0,
     process: ''
   });
@@ -40,16 +39,11 @@ const Inventory = () => {
     fetchInventory();
   }, []);
 
-  // Simplified columns - Removed HSN, Category, Status
+  // Simplified columns - Removed Stock from here as well, and put Part Number first
   const columns = [
+    { header: "Part Number", accessor: "part_number" },
     { header: "Product Name", accessor: "name" },
-    { header: "SKU", accessor: "sku" },
     { header: "Process", accessor: "process" },
-    {
-      header: "Stock", accessor: "stock", render: (val) => (
-        <span style={{ color: val < 50 ? 'var(--danger)' : 'var(--text-primary)' }}>{val}</span>
-      )
-    },
     { header: "Unit Price", accessor: "price", render: (val) => `₹${val.toFixed(2)}` },
   ];
 
@@ -59,16 +53,20 @@ const Inventory = () => {
 
   const handleSave = async () => {
     try {
+      const itemToSave = {
+        ...newItem,
+        part_number: parseInt(newItem.part_number) || null
+      };
       if (newItem.id) {
-        await invoke('update_item', { item: newItem });
+        await invoke('update_item', { item: itemToSave });
         showAlert('success', 'Updated!', `${newItem.name} has been updated.`);
       } else {
-        await invoke('add_item', { item: newItem });
+        await invoke('add_item', { item: itemToSave });
         showAlert('success', 'Added!', `${newItem.name} added to inventory.`);
       }
       setIsModalOpen(false);
       fetchInventory();
-      setNewItem({ id: null, name: '', sku: '', stock: 0, price: 0.0, process: '' });
+      setNewItem({ id: null, name: '', part_number: '', price: 0.0, process: '' });
     } catch (error) {
       console.error("Failed to save item:", error);
       showAlert('error', 'Error', `Failed to save: ${error}`);
@@ -105,13 +103,8 @@ const Inventory = () => {
 
   const detailFields = [
     { key: 'name', label: 'Part Name' },
-    { key: 'sku', label: 'SKU' },
+    { key: 'part_number', label: 'Part Number' },
     { key: 'process', label: 'Process' },
-    {
-      key: 'stock', label: 'Stock Quantity', render: (val) => (
-        <span style={{ color: val < 50 ? 'var(--danger)' : 'var(--success)', fontWeight: 600 }}>{val} units</span>
-      )
-    },
     { key: 'price', label: 'Unit Price', render: (val) => `₹${val?.toFixed(2) || '0.00'}` },
   ];
 
@@ -126,10 +119,10 @@ const Inventory = () => {
           >
             Parts
           </motion.h1>
-          <p className="page-subtitle">Manage your parts and stock levels.</p>
+          <p className="page-subtitle">Manage your parts.</p>
         </div>
         <button className="btn-primary-glow" onClick={() => {
-          setNewItem({ id: null, name: '', sku: '', stock: 0, price: 0.0, process: '' });
+          setNewItem({ id: null, name: '', part_number: '', price: 0.0, process: '' });
           setIsModalOpen(true);
         }}>
           <Plus size={18} /> Add Product
@@ -184,13 +177,13 @@ const Inventory = () => {
         </div>
         <div style={{ display: 'flex', gap: '1rem' }}>
           <div className="form-group" style={{ flex: 1 }}>
-            <label>SKU</label>
+            <label>Part Number</label>
             <input
-              type="text"
+              type="number"
               className="form-input"
-              value={newItem.sku}
-              onChange={(e) => setNewItem({ ...newItem, sku: e.target.value })}
-              placeholder="e.g. SP-001"
+              value={newItem.part_number}
+              onChange={(e) => setNewItem({ ...newItem, part_number: e.target.value })}
+              placeholder="e.g. 1001"
             />
           </div>
           <div className="form-group" style={{ flex: 1 }}>
@@ -205,16 +198,6 @@ const Inventory = () => {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <div className="form-group" style={{ flex: 1 }}>
-            <label>Stock</label>
-            <input
-              type="number"
-              className="form-input"
-              value={newItem.stock}
-              onChange={(e) => setNewItem({ ...newItem, stock: parseInt(e.target.value) || 0 })}
-              placeholder="0"
-            />
-          </div>
           <div className="form-group" style={{ flex: 1 }}>
             <label>Unit Price (₹)</label>
             <input

@@ -1,130 +1,167 @@
 mod db;
+mod backup;
 
-use db::{ActivityLog, Customer, DashboardStats, InventoryItem, Invoice, RevenuePoint, StockLog};
-use rusqlite::Connection;
+use db::{ActivityLog, Customer, DashboardStats, InventoryItem, Invoice, RevenuePoint};
+use backup::BackupState;
+use std::sync::Mutex;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+// --- Backup Commands ---
+
+#[tauri::command]
+async fn connect_google_drive(app: tauri::AppHandle) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        backup::start_oauth_flow(app)
+    }).await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn is_google_drive_connected(app: tauri::AppHandle) -> bool {
+    backup::is_connected(&app)
+}
+
+#[tauri::command]
+async fn disconnect_google_drive(app: tauri::AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        backup::delete_stored_token(&app)
+    }).await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn backup_now(app: tauri::AppHandle) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        backup::upload_backup(app)
+    }).await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn restore_now(app: tauri::AppHandle) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        backup::restore_backup(app)
+    }).await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())
+}
+
+// --- Database Commands ---
+
 #[tauri::command]
 fn get_revenue_history(app: tauri::AppHandle) -> Result<Vec<RevenuePoint>, String> {
-    let db_path = db::get_db_path(&app);
-    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    let conn = db::open_encrypted_conn(&app)?;
     db::get_revenue_history(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn get_invoice(app: tauri::AppHandle, id: String) -> Result<Invoice, String> {
-    let db_path = db::get_db_path(&app);
-    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    let conn = db::open_encrypted_conn(&app)?;
     db::get_invoice(&conn, &id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn get_inventory(app: tauri::AppHandle) -> Result<Vec<InventoryItem>, String> {
-    let db_path = db::get_db_path(&app);
-    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    let conn = db::open_encrypted_conn(&app)?;
     db::get_inventory(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn add_item(app: tauri::AppHandle, item: InventoryItem) -> Result<(), String> {
-    let db_path = db::get_db_path(&app);
-    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    let conn = db::open_encrypted_conn(&app)?;
     db::add_item(&conn, &item).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn get_customers(app: tauri::AppHandle) -> Result<Vec<Customer>, String> {
-    let db_path = db::get_db_path(&app);
-    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    let conn = db::open_encrypted_conn(&app)?;
     db::get_customers(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn add_customer(app: tauri::AppHandle, customer: Customer) -> Result<(), String> {
-    let db_path = db::get_db_path(&app);
-    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    let conn = db::open_encrypted_conn(&app)?;
     db::add_customer(&conn, &customer).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn get_invoices(app: tauri::AppHandle) -> Result<Vec<Invoice>, String> {
-    let db_path = db::get_db_path(&app);
-    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    let conn = db::open_encrypted_conn(&app)?;
     db::get_invoices(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn save_invoice(app: tauri::AppHandle, invoice: Invoice) -> Result<(), String> {
-    let db_path = db::get_db_path(&app);
-    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    let conn = db::open_encrypted_conn(&app)?;
     db::save_invoice(&conn, &invoice).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn get_dashboard_stats(app: tauri::AppHandle) -> Result<DashboardStats, String> {
-    let db_path = db::get_db_path(&app);
-    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    let conn = db::open_encrypted_conn(&app)?;
     db::get_dashboard_stats(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn get_stock_logs(app: tauri::AppHandle) -> Result<Vec<StockLog>, String> {
-    let db_path = db::get_db_path(&app);
-    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
-    db::get_stock_logs(&conn).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
 fn get_activity_logs(app: tauri::AppHandle) -> Result<Vec<ActivityLog>, String> {
-    let db_path = db::get_db_path(&app);
-    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    let conn = db::open_encrypted_conn(&app)?;
     db::get_activity_logs(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn update_item(app: tauri::AppHandle, item: InventoryItem) -> Result<(), String> {
-    let db_path = db::get_db_path(&app);
-    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    let conn = db::open_encrypted_conn(&app)?;
     db::update_item(&conn, &item).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn delete_item(app: tauri::AppHandle, id: i64) -> Result<(), String> {
-    let db_path = db::get_db_path(&app);
-    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    let conn = db::open_encrypted_conn(&app)?;
     db::delete_item(&conn, id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn update_customer(app: tauri::AppHandle, customer: Customer) -> Result<(), String> {
-    let db_path = db::get_db_path(&app);
-    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    let conn = db::open_encrypted_conn(&app)?;
     db::update_customer(&conn, &customer).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn delete_customer(app: tauri::AppHandle, id: i64) -> Result<(), String> {
-    let db_path = db::get_db_path(&app);
-    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    let conn = db::open_encrypted_conn(&app)?;
     db::delete_customer(&conn, id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn delete_invoice(app: tauri::AppHandle, id: String) -> Result<(), String> {
-    let db_path = db::get_db_path(&app);
-    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    let conn = db::open_encrypted_conn(&app)?;
     db::delete_invoice(&conn, id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
+fn export_db(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    db::export_db(&app, std::path::Path::new(&path))
+}
+
+#[tauri::command]
+fn import_db(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    db::import_db(&app, std::path::Path::new(&path))
+}
+
+#[tauri::command]
 fn update_invoice_status(app: tauri::AppHandle, id: String, status: String) -> Result<(), String> {
-    let db_path = db::get_db_path(&app);
-    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    let conn = db::open_encrypted_conn(&app)?;
     db::update_invoice_status(&conn, &id, &status).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_database_key(app: tauri::AppHandle) -> Result<String, String> {
+    db::get_or_create_db_key(&app)
+}
+
+#[tauri::command]
+fn get_dev_pin() -> Result<String, String> {
+    dotenvy::dotenv().ok();
+    std::env::var("DEV_PIN").map_err(|_| "DEV_PIN not found in .env".to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -133,6 +170,8 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .manage(BackupState { access_token: Mutex::new(None) })
         .setup(|app| {
             match db::init_db(app.handle()) {
                 Ok(_) => println!("Database initialized successfully"),
@@ -149,7 +188,6 @@ pub fn run() {
             get_invoices,
             save_invoice,
             get_dashboard_stats,
-            get_stock_logs,
             get_activity_logs,
             update_item,
             delete_item,
@@ -157,8 +195,17 @@ pub fn run() {
             delete_customer,
             delete_invoice,
             update_invoice_status,
+            connect_google_drive,
+            is_google_drive_connected,
+            disconnect_google_drive,
+            backup_now,
+            restore_now,
+            export_db,
+            import_db,
             get_revenue_history,
-            get_invoice
+            get_invoice,
+            get_database_key,
+            get_dev_pin
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
