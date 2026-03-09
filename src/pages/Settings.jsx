@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
-import { Moon, Sun, Monitor, Info, Code, Cpu, Calendar, Shield, Database, Download, Upload, Cloud, CloudOff, RefreshCw, LogOut, Terminal, Copy } from 'lucide-react';
+import { Moon, Sun, Monitor, Info, Code, Calendar, Shield, Database, Download, Upload, Cloud, RefreshCw, Terminal, Copy, Archive } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { save, open } from '@tauri-apps/plugin-dialog';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
@@ -25,10 +25,11 @@ const Settings = () => {
     useEffect(() => {
         const checkConnection = async () => {
             try {
+                // Keep calling the same command, but interpret generically in UI
                 const connected = await invoke('is_google_drive_connected');
                 setIsConnected(connected);
             } catch (e) {
-                console.error("Failed to check GDrive connection:", e);
+                console.error("Failed to check Cloud configuration:", e);
             }
         };
         checkConnection();
@@ -84,7 +85,7 @@ const Settings = () => {
         }
     };
 
-    const handleBackup = async () => {
+    const handleLocalBackup = async () => {
         try {
             const filePath = await save({
                 filters: [{ name: 'Database', extensions: ['db'] }],
@@ -100,7 +101,7 @@ const Settings = () => {
         }
     };
 
-    const handleRestore = async () => {
+    const handleLocalRestore = async () => {
         try {
             const filePath = await open({
                 filters: [{ name: 'Database', extensions: ['db'] }],
@@ -116,17 +117,7 @@ const Settings = () => {
         }
     };
 
-    const handleConnectGDrive = async () => {
-        try {
-            const result = await invoke('connect_google_drive');
-            setIsConnected(true);
-            setAlertConfig({ isOpen: true, type: 'success', title: 'Google Drive Connected', message: result });
-        } catch (e) {
-            setAlertConfig({ isOpen: true, type: 'error', title: 'Connection Failed', message: String(e) });
-        }
-    };
-
-    const handleGDriveBackup = async () => {
+    const handleCloudBackup = async () => {
         setIsSyncing(true);
         try {
             const result = await invoke('backup_now');
@@ -138,7 +129,7 @@ const Settings = () => {
         }
     };
 
-    const handleGDriveRestore = async () => {
+    const handleCloudRestore = async () => {
         setIsSyncing(true);
         try {
             const result = await invoke('restore_now');
@@ -147,16 +138,6 @@ const Settings = () => {
             setAlertConfig({ isOpen: true, type: 'error', title: 'Cloud Restore Failed', message: String(e) });
         } finally {
             setIsSyncing(false);
-        }
-    };
-
-    const handleDisconnectGDrive = async () => {
-        try {
-            await invoke('disconnect_google_drive');
-            setIsConnected(false);
-            setAlertConfig({ isOpen: true, type: 'success', title: 'Disconnected', message: 'Successfully disconnected from Google Drive.' });
-        } catch (e) {
-            setAlertConfig({ isOpen: true, type: 'error', title: 'Error', message: String(e) });
         }
     };
 
@@ -246,10 +227,10 @@ const Settings = () => {
                 {/* Data Management Card */}
                 <motion.div className="settings-card" variants={itemVariants} style={{ height: 'auto' }}>
                     <div className="settings-card-header">
-                        <div className="settings-card-icon" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+                        <div className="settings-card-icon" style={{ background: 'rgba(139, 92, 246, 0.1)', color: 'var(--primary)' }}>
                             <Database size={20} />
                         </div>
-                        <h2 className="settings-card-title">Cloud Backup (Google Drive)</h2>
+                        <h2 className="settings-card-title">Cloud Backup</h2>
                     </div>
 
                     <div className="settings-section">
@@ -259,20 +240,18 @@ const Settings = () => {
                                     width: '60px', 
                                     height: '60px', 
                                     borderRadius: '50%', 
-                                    background: 'rgba(107, 114, 128, 0.1)', 
+                                    background: 'rgba(239, 68, 68, 0.1)', 
                                     display: 'flex', 
                                     alignItems: 'center', 
                                     justifyContent: 'center',
                                     margin: '0 auto 1rem'
                                 }}>
-                                    <CloudOff size={30} style={{ color: 'var(--text-muted)' }} />
+                                    <Shield size={30} style={{ color: 'var(--danger)' }} />
                                 </div>
-                                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                                    Connect your Google account to enable automatic cloud backups and cross-device synchronization.
+                                <h3 style={{ fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Cloud Not Configured</h3>
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                                    Required cloud credentials must be provided in the configuration files to enable cloud backups.
                                 </p>
-                                <button className="btn-primary-glow" onClick={handleConnectGDrive} style={{ width: '100%' }}>
-                                    <Cloud size={18} /> Connect Google Drive
-                                </button>
                             </div>
                         ) : (
                             <div>
@@ -281,29 +260,22 @@ const Settings = () => {
                                     alignItems: 'center', 
                                     gap: '0.75rem', 
                                     padding: '0.75rem',
-                                    background: 'rgba(16, 185, 129, 0.1)',
+                                    background: 'rgba(139, 92, 246, 0.1)',
                                     borderRadius: 'var(--radius-md)',
                                     marginBottom: '1.5rem',
-                                    border: '1px solid rgba(16, 185, 129, 0.2)'
+                                    border: '1px solid rgba(139, 92, 246, 0.2)'
                                 }}>
-                                    <Cloud size={20} style={{ color: '#10b981' }} />
+                                    <Cloud size={20} style={{ color: 'var(--primary)' }} />
                                     <div style={{ flex: 1 }}>
-                                        <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: '#10b981' }}>Connected to Google Drive</p>
-                                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Cloud synchronization active</p>
+                                        <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)' }}>Cloud Backup Active</p>
+                                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>System ready for data synchronization</p>
                                     </div>
-                                    <button 
-                                        onClick={handleDisconnectGDrive}
-                                        style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-                                        title="Disconnect account"
-                                    >
-                                        <LogOut size={16} />
-                                    </button>
                                 </div>
 
                                 <div className="database-actions" style={{ marginBottom: '1rem' }}>
                                     <button 
                                         className="btn-glass" 
-                                        onClick={handleGDriveBackup} 
+                                        onClick={handleCloudBackup} 
                                         disabled={isSyncing}
                                         style={{ justifyContent: 'center', padding: '0.8rem', flex: 1 }}
                                     >
@@ -312,7 +284,7 @@ const Settings = () => {
                                     </button>
                                     <button 
                                         className="btn-glass" 
-                                        onClick={handleGDriveRestore} 
+                                        onClick={handleCloudRestore} 
                                         disabled={isSyncing}
                                         style={{ justifyContent: 'center', padding: '0.8rem', flex: 1 }}
                                     >
@@ -322,18 +294,9 @@ const Settings = () => {
                                 </div>
                             </div>
                         )}
-
-                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '1rem' }}>
-                            <p style={{ margin: '0 0 1rem 0', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Local Backup</p>
-                            <div className="database-actions">
-                                <button className="btn-glass" onClick={handleBackup} style={{ justifyContent: 'center', padding: '0.6rem', fontSize: '0.8rem' }}>
-                                    <Download size={16} /> Export DB
-                                </button>
-                                <button className="btn-glass" onClick={handleRestore} style={{ justifyContent: 'center', padding: '0.6rem', fontSize: '0.8rem' }}>
-                                    <Upload size={16} /> Import DB
-                                </button>
-                            </div>
-                        </div>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '1rem' }}>
+                            Your data is encrypted locally before being uploaded to secure cloud storage.
+                        </p>
                     </div>
                 </motion.div>
 
@@ -358,7 +321,7 @@ const Settings = () => {
                             <Code size={18} className="tech-info-icon" />
                             <div>
                                 <p className="tech-info-label">Version</p>
-                                <p className="tech-info-value">1.2.0</p>
+                                <p className="tech-info-value">1.3.0</p>
                             </div>
                         </div>
 
@@ -366,7 +329,7 @@ const Settings = () => {
                             <Calendar size={18} className="tech-info-icon" style={{ color: '#f59e0b' }} />
                             <div>
                                 <p className="tech-info-label">Build Date</p>
-                                <p className="tech-info-value">Feb 2026</p>
+                                <p className="tech-info-value">March 2026</p>
                             </div>
                         </div>
                     </div>
@@ -410,32 +373,51 @@ const Settings = () => {
                             border: '1px solid var(--border)', 
                             borderRadius: 'var(--radius-md)' 
                         }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--primary)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', color: 'var(--primary)' }}>
                                 <Terminal size={18} />
                                 <h4 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Developer Tools</h4>
                             </div>
                             
-                            <div className="form-group">
-                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Database Encryption Key</label>
-                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                                    <input 
-                                        type="text" 
-                                        readOnly 
-                                        value={dbKey} 
-                                        className="form-input" 
-                                        style={{ fontFamily: 'monospace', fontSize: '0.8rem', background: 'var(--bg-tertiary)' }} 
-                                    />
-                                    <button 
-                                        className="btn-glass" 
-                                        onClick={() => copyToClipboard(dbKey)}
-                                        style={{ padding: '0 1rem' }}
-                                    >
-                                        <Copy size={16} />
-                                    </button>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                {/* Database Key Section */}
+                                <div className="form-group">
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Database Encryption Key</label>
+                                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                        <input 
+                                            type="text" 
+                                            readOnly 
+                                            value={dbKey} 
+                                            className="form-input" 
+                                            style={{ fontFamily: 'monospace', fontSize: '0.8rem', background: 'var(--bg-tertiary)' }} 
+                                        />
+                                        <button 
+                                            className="btn-glass" 
+                                            onClick={() => copyToClipboard(dbKey)}
+                                            style={{ padding: '0 1rem' }}
+                                        >
+                                            <Copy size={16} />
+                                        </button>
+                                    </div>
+                                    <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                                        Encryption key for manual database access.
+                                    </p>
                                 </div>
-                                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                                    Use this key with "DB Browser for SQLite" (SQLCipher version) to open the database file manually.
-                                </p>
+
+                                {/* Local Backup Section - PROTECTED BY PIN */}
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Advanced Data Management</label>
+                                    <div className="database-actions" style={{ marginTop: '0.5rem' }}>
+                                        <button className="btn-glass" onClick={handleLocalBackup} style={{ justifyContent: 'center', padding: '0.6rem', fontSize: '0.8rem', flex: 1 }}>
+                                            <Archive size={16} /> Export Local
+                                        </button>
+                                        <button className="btn-glass" onClick={handleLocalRestore} style={{ justifyContent: 'center', padding: '0.6rem', fontSize: '0.8rem', flex: 1 }}>
+                                            <Upload size={16} /> Import Local
+                                        </button>
+                                    </div>
+                                    <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                                        Manually export or restore local database files.
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     )}

@@ -13,36 +13,18 @@ fn greet(name: &str) -> String {
 // --- Backup Commands ---
 
 #[tauri::command]
-async fn connect_google_drive(app: tauri::AppHandle) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        backup::start_oauth_flow(app)
-    }).await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())
-}
-
-#[tauri::command]
 fn is_google_drive_connected(app: tauri::AppHandle) -> bool {
     backup::is_connected(&app)
 }
 
 #[tauri::command]
-async fn disconnect_google_drive(app: tauri::AppHandle) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        backup::delete_stored_token(&app)
-    }).await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())
-}
-
-#[tauri::command]
 async fn backup_now(app: tauri::AppHandle) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        backup::upload_backup(app)
-    }).await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())
+    backup::upload_backup(app).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn restore_now(app: tauri::AppHandle) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        backup::restore_backup(app)
-    }).await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())
+    backup::restore_backup(app).await.map_err(|e| e.to_string())
 }
 
 // --- Database Commands ---
@@ -195,9 +177,7 @@ pub fn run() {
             delete_customer,
             delete_invoice,
             update_invoice_status,
-            connect_google_drive,
             is_google_drive_connected,
-            disconnect_google_drive,
             backup_now,
             restore_now,
             export_db,

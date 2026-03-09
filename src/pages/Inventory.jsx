@@ -22,7 +22,7 @@ const Inventory = () => {
     id: null,
     name: '',
     part_number: '',
-    price: 0.0,
+    price: '',
     process: ''
   });
 
@@ -55,7 +55,8 @@ const Inventory = () => {
     try {
       const itemToSave = {
         ...newItem,
-        part_number: parseInt(newItem.part_number) || null
+        part_number: parseInt(newItem.part_number) || null,
+        price: parseFloat(newItem.price) || 0.0
       };
       if (newItem.id) {
         await invoke('update_item', { item: itemToSave });
@@ -66,7 +67,7 @@ const Inventory = () => {
       }
       setIsModalOpen(false);
       fetchInventory();
-      setNewItem({ id: null, name: '', part_number: '', price: 0.0, process: '' });
+      setNewItem({ id: null, name: '', part_number: '', price: '', process: '' });
     } catch (error) {
       console.error("Failed to save item:", error);
       showAlert('error', 'Error', `Failed to save: ${error}`);
@@ -205,7 +206,7 @@ const Inventory = () => {
               step="0.01"
               className="form-input"
               value={newItem.price}
-              onChange={(e) => setNewItem({ ...newItem, price: parseFloat(e.target.value) || 0.0 })}
+              onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
               placeholder="0.00"
             />
           </div>

@@ -85,7 +85,7 @@ const CreateInvoice = () => {
         client_name: '',
         client_details: null,
         vendor_code: '',
-        date: new Date().toISOString().split('T')[0],
+        date: toDisplayDate(new Date().toISOString().split('T')[0]),
         due_date: '',
         dc_no: '',
         dc_date: '',
@@ -111,8 +111,8 @@ const CreateInvoice = () => {
         part_number: '',
         name: '',
         process: '',
-        qty: 1,
-        rate: 0
+        qty: '',
+        rate: ''
     });
 
     useEffect(() => {
@@ -130,6 +130,7 @@ const CreateInvoice = () => {
                     const client = cust.find(c => c.name === invData.client_name);
                     setInvoice({
                         ...invData,
+                        date: toDisplayDate(invData.date),
                         items: parsedItems,
                         client_details: client || null,
                         vendor_code: invData.vendor_code || client?.vendor_code || '',
@@ -174,14 +175,17 @@ const CreateInvoice = () => {
     };
 
     const addItem = () => {
-        const amount = (parseFloat(newItem.qty) || 0) * (parseFloat(newItem.rate) || 0);
+        const qty = parseFloat(newItem.qty) || 0;
+        const rate = parseFloat(newItem.rate) || 0;
+        const amount = qty * rate;
+        
         if (newItem.part_number || newItem.name) {
             setInvoice(prev => ({
                 ...prev,
-                items: [...prev.items, { ...newItem, amount }]
+                items: [...prev.items, { ...newItem, qty, rate, amount }]
             }));
             // Reset form
-            setNewItem({ part_number: '', name: '', process: '', qty: 1, rate: 0 });
+            setNewItem({ part_number: '', name: '', process: '', qty: '', rate: '' });
         }
     };
 
@@ -224,7 +228,7 @@ const CreateInvoice = () => {
                     id: invoice.id,
                     client_name: invoice.client_name,
                     vendor_code: invoice.vendor_code,
-                    date: invoice.date,
+                    date: toISODate(invoice.date),
                     due_date: invoice.due_date,
                     amount: totals.total,
                     status: invoice.status,
@@ -385,17 +389,11 @@ const CreateInvoice = () => {
                     <div className="form-group">
                         <label>Date (DD-MM-YYYY)</label>
                         <input type="text" className="form-input"
-                            value={toDisplayDate(invoice.date)}
+                            value={invoice.date}
                             placeholder="DD-MM-YYYY"
                             onChange={e => {
                                 const formatted = formatDateInput(e.target.value);
-                                setInvoice({ ...invoice, date: formatted.length === 10 ? toISODate(formatted) : invoice.date });
-                            }}
-                            onBlur={e => {
-                                const formatted = formatDateInput(e.target.value);
-                                if (formatted.length === 10) {
-                                    setInvoice({ ...invoice, date: toISODate(formatted) });
-                                }
+                                setInvoice({ ...invoice, date: formatted });
                             }} />
                     </div>
                     <div className="form-group">
@@ -544,7 +542,7 @@ const CreateInvoice = () => {
                                 type="number"
                                 className="form-input"
                                 value={newItem.qty}
-                                onChange={(e) => setNewItem({ ...newItem, qty: parseInt(e.target.value) || 1 })}
+                                onChange={(e) => setNewItem({ ...newItem, qty: e.target.value })}
                                 placeholder="1"
                             />
                         </div>
@@ -554,7 +552,7 @@ const CreateInvoice = () => {
                                 type="number"
                                 className="form-input"
                                 value={newItem.rate}
-                                onChange={(e) => setNewItem({ ...newItem, rate: parseFloat(e.target.value) || 0 })}
+                                onChange={(e) => setNewItem({ ...newItem, rate: e.target.value })}
                                 placeholder="0.00"
                             />
                         </div>
