@@ -5,7 +5,6 @@ use std::fs;
 use std::sync::Mutex;
 use tauri::AppHandle;
 use tauri::Manager;
-use dotenvy::dotenv;
 use std::env;
 
 // --- Cloud Configuration ---
@@ -36,9 +35,9 @@ async fn get_cloud_client() -> Result<(Client, String)> {
     Ok((client, bucket))
 }
 
-// Global state (kept to maintain compatibility with lib.rs for now)
+// Global state
 pub struct BackupState {
-    pub access_token: Mutex<Option<String>>,
+    pub _last_backup_check: Mutex<Option<String>>,
 }
 
 // --- Backup Operations ---
@@ -53,6 +52,7 @@ pub async fn upload_backup(app_handle: AppHandle) -> Result<String> {
     // Get DB path
     let app_dir = app_handle.path().app_data_dir().expect("Failed to get app data dir");
     let db_path = app_dir.join("littleflower.db");
+    let key_path = app_dir.join("secret.key");
     
     if !db_path.exists() {
         return Err(anyhow!("Database file not found at {:?}", db_path));
@@ -74,8 +74,19 @@ pub async fn upload_backup(app_handle: AppHandle) -> Result<String> {
         .await
         .map_err(|e| anyhow!("Failed to upload to Cloud storage: {}", e))?;
 
+    // Also upload the encryption key if it exists
+    if key_path.exists() {
+        let key_content = fs::read(&key_path)?;
+        client.put_object()
+            .bucket(&bucket)
+            .key("secret.key")
+            .body(ByteStream::from(key_content))
+            .send()
+            .await
+            .ok();
+    }
+
     // Also update a "latest" pointer or just keep the latest for easy restore
-    // For simplicity, we can also upload it as "littleflower_backup_latest.db"
     let body_latest = ByteStream::from(fs::read(&db_path)?);
     client.put_object()
         .bucket(&bucket)
@@ -83,7 +94,7 @@ pub async fn upload_backup(app_handle: AppHandle) -> Result<String> {
         .body(body_latest)
         .send()
         .await
-        .ok(); // Ignore failure for latest pointer
+        .ok(); 
 
     Ok(format!("Backup uploaded successfully: {}", file_name))
 }
@@ -91,7 +102,19 @@ pub async fn upload_backup(app_handle: AppHandle) -> Result<String> {
 pub async fn restore_backup(app_handle: AppHandle) -> Result<String> {
     let (client, bucket) = get_cloud_client().await?;
     
-    // We'll try to restore the "latest" one first
+    // 1. Restore the key first
+    if let Ok(res) = client.get_object().bucket(&bucket).key("secret.key").send().await {
+        if let Ok(data) = res.body.collect().await {
+            let app_dir = app_handle.path().app_data_dir().expect("Failed to get app data dir");
+            let key_path = app_dir.join("secret.key");
+            fs::write(&key_path, data.into_bytes()).ok();
+            
+            // CRITICAL: Clear the cached key in memory so the app reads the new one
+            crate::db::clear_cached_key();
+        }
+    }
+
+    // 2. Restore the database
     let file_name = "littleflower_backup_latest.db";
 
     let res = client.get_object()
@@ -118,6 +141,27 @@ pub async fn restore_backup(app_handle: AppHandle) -> Result<String> {
     fs::write(&db_path, data)?;
 
     Ok("Data restored successfully from Cloud storage. Please restart the application for changes to take effect.".to_string())
+}
+
+pub async fn get_latest_backup_info() -> Result<String> {
+    let (client, bucket) = get_cloud_client().await?;
+    
+    let res = client.head_object()
+        .bucket(&bucket)
+        .key("littleflower_backup_latest.db")
+        .send()
+        .await
+        .map_err(|e| anyhow!("No backup found: {}", e))?;
+
+    if let Some(last_modified) = res.last_modified() {
+        let secs = last_modified.secs();
+        let datetime = chrono::DateTime::from_timestamp(secs, 0)
+            .ok_or_else(|| anyhow!("Invalid timestamp"))?;
+        let local_time: chrono::DateTime<chrono::Local> = datetime.into();
+        Ok(local_time.format("%Y-%m-%d %H:%M:%S").to_string())
+    } else {
+        Err(anyhow!("Last modified time not available"))
+    }
 }
 
 #[cfg(test)]

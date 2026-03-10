@@ -27,6 +27,11 @@ async fn restore_now(app: tauri::AppHandle) -> Result<String, String> {
     backup::restore_backup(app).await.map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+async fn get_latest_backup_info() -> Result<String, String> {
+    backup::get_latest_backup_info().await.map_err(|e| e.to_string())
+}
+
 // --- Database Commands ---
 
 #[tauri::command]
@@ -69,6 +74,12 @@ fn add_customer(app: tauri::AppHandle, customer: Customer) -> Result<(), String>
 fn get_invoices(app: tauri::AppHandle) -> Result<Vec<Invoice>, String> {
     let conn = db::open_encrypted_conn(&app)?;
     db::get_invoices(&conn).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_latest_invoice_id(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let conn = db::open_encrypted_conn(&app)?;
+    db::get_latest_invoice_id(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -130,6 +141,11 @@ fn import_db(app: tauri::AppHandle, path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn reset_database(app: tauri::AppHandle) -> Result<(), String> {
+    db::reset_database(&app)
+}
+
+#[tauri::command]
 fn update_invoice_status(app: tauri::AppHandle, id: String, status: String) -> Result<(), String> {
     let conn = db::open_encrypted_conn(&app)?;
     db::update_invoice_status(&conn, &id, &status).map_err(|e| e.to_string())
@@ -153,7 +169,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
-        .manage(BackupState { access_token: Mutex::new(None) })
+        .manage(BackupState { _last_backup_check: Mutex::new(None) })
         .setup(|app| {
             match db::init_db(app.handle()) {
                 Ok(_) => println!("Database initialized successfully"),
@@ -168,6 +184,7 @@ pub fn run() {
             get_customers,
             add_customer,
             get_invoices,
+            get_latest_invoice_id,
             save_invoice,
             get_dashboard_stats,
             get_activity_logs,
@@ -180,8 +197,10 @@ pub fn run() {
             is_google_drive_connected,
             backup_now,
             restore_now,
+            get_latest_backup_info,
             export_db,
             import_db,
+            reset_database,
             get_revenue_history,
             get_invoice,
             get_database_key,

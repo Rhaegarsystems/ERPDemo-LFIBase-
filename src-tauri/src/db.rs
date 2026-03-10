@@ -10,7 +10,8 @@ const DB_KEY_ACCOUNT: &str = "database_encryption_key";
 const SERVICE_NAME: &str = "LittleFlowerIndustries-Backup";
 
 // Cache the key in memory to ensure same key is used throughout the session
-static CACHED_KEY: OnceLock<String> = OnceLock::new();
+// Changed to Mutex to allow clearing/refreshing after a restore
+static CACHED_KEY: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
 
 pub fn get_db_path(app_handle: &AppHandle) -> std::path::PathBuf {
     app_handle
@@ -20,10 +21,18 @@ pub fn get_db_path(app_handle: &AppHandle) -> std::path::PathBuf {
         .join("littleflower.db")
 }
 
+pub fn clear_cached_key() {
+    if let Ok(mut key_cache) = CACHED_KEY.lock() {
+        *key_cache = None;
+    }
+}
+
 pub fn get_or_create_db_key(app_handle: &AppHandle) -> Result<String, String> {
     // 1. Check memory cache
-    if let Some(key) = CACHED_KEY.get() {
-        return Ok(key.clone());
+    if let Ok(key_cache) = CACHED_KEY.lock() {
+        if let Some(key) = &*key_cache {
+            return Ok(key.clone());
+        }
     }
 
     let app_dir = app_handle.path().app_data_dir().expect("failed to get app data dir");
@@ -53,7 +62,9 @@ pub fn get_or_create_db_key(app_handle: &AppHandle) -> Result<String, String> {
     };
 
     // Store in cache
-    let _ = CACHED_KEY.set(key.clone());
+    if let Ok(mut key_cache) = CACHED_KEY.lock() {
+        *key_cache = Some(key.clone());
+    }
     Ok(key)
 }
 
@@ -171,20 +182,13 @@ pub fn open_encrypted_conn(app_handle: &AppHandle) -> Result<Connection, String>
             ensure_tables(&conn)?;
             Ok(conn)
         },
-        Err(_) => {
-            // If it fails (e.g. wrong key, or file is not encrypted), delete and start fresh
-            println!("Database incompatible or corrupted. Starting fresh...");
-            drop(conn);
-            let _ = fs::remove_file(&db_path);
-            
-            // Create new encrypted database
-            let new_conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
-            new_conn.pragma_update(None, "key", &key).map_err(|e| e.to_string())?;
-            
-            // Initialize tables immediately
-            ensure_tables(&new_conn)?;
-            
-            Ok(new_conn)
+        Err(e) => {
+            // If it fails (e.g. wrong key, or file is not encrypted), return error
+            // DO NOT DELETE the file automatically as it might be a mismatch after restore
+            Err(format!(
+                "Failed to decrypt database. The key might be incorrect or the database is corrupted. Error: {}", 
+                e
+            ))
         }
     }
 }
@@ -569,6 +573,17 @@ pub fn get_invoice(conn: &Connection, id: &str) -> Result<Invoice> {
     Ok(invoice)
 }
 
+pub fn get_latest_invoice_id(conn: &Connection) -> Result<Option<String>> {
+    let mut stmt = conn.prepare("SELECT id FROM invoices ORDER BY rowid DESC LIMIT 1")?;
+    let mut rows = stmt.query([])?;
+    if let Some(row) = rows.next()? {
+        let id: String = row.get(0)?;
+        Ok(Some(id))
+    } else {
+        Ok(None)
+    }
+}
+
 pub fn delete_invoice(conn: &Connection, id: String) -> Result<()> {
     conn.execute("DELETE FROM invoices WHERE id = ?1", [&id])?;
     log_activity(conn, "Deleted", "Invoice", &id, "Invoice deleted")?;
@@ -600,5 +615,27 @@ pub fn import_db(app_handle: &AppHandle, source_path: &std::path::Path) -> Resul
     let target_path = get_db_path(app_handle);
     // Ensure database is not locked (might need careful handling in a real app)
     std::fs::copy(source_path, target_path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn reset_database(app_handle: &AppHandle) -> Result<(), String> {
+    let db_path = get_db_path(app_handle);
+    let app_dir = app_handle.path().app_data_dir().expect("failed to get app data dir");
+    let key_path = app_dir.join("secret.key");
+
+    // Clear memory cache first
+    clear_cached_key();
+
+    // Delete files if they exist
+    if db_path.exists() {
+        fs::remove_file(&db_path).map_err(|e| e.to_string())?;
+    }
+    if key_path.exists() {
+        fs::remove_file(&key_path).map_err(|e| e.to_string())?;
+    }
+
+    // Re-initialize a fresh database
+    init_db(app_handle)?;
+
     Ok(())
 }

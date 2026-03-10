@@ -6,14 +6,17 @@ import { invoke } from '@tauri-apps/api/core';
 import { save, open } from '@tauri-apps/plugin-dialog';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import AlertModal from '../components/AlertModal';
+import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import '../styles/PageCommon.css';
 import '../styles/Settings.css';
 
 const Settings = () => {
     const { theme, toggleTheme } = useTheme();
     const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'success', title: '', message: '' });
+    const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [latestBackup, setLatestBackup] = useState(null);
     
     // Developer Mode State
     const [versionClicks, setVersionClicks] = useState(0);
@@ -22,12 +25,25 @@ const Settings = () => {
     const [isDevMode, setIsDevMode] = useState(false);
     const [dbKey, setDbKey] = useState('');
 
+    const fetchLatestBackupInfo = async () => {
+        try {
+            const info = await invoke('get_latest_backup_info');
+            setLatestBackup(info);
+        } catch (e) {
+            console.log("No backup info found.");
+            setLatestBackup(null);
+        }
+    };
+
     useEffect(() => {
         const checkConnection = async () => {
             try {
                 // Keep calling the same command, but interpret generically in UI
                 const connected = await invoke('is_google_drive_connected');
                 setIsConnected(connected);
+                if (connected) {
+                    fetchLatestBackupInfo();
+                }
             } catch (e) {
                 console.error("Failed to check Cloud configuration:", e);
             }
@@ -122,6 +138,7 @@ const Settings = () => {
         try {
             const result = await invoke('backup_now');
             setAlertConfig({ isOpen: true, type: 'success', title: 'Cloud Backup Successful', message: result });
+            fetchLatestBackupInfo();
         } catch (e) {
             setAlertConfig({ isOpen: true, type: 'error', title: 'Cloud Backup Failed', message: String(e) });
         } finally {
@@ -134,10 +151,21 @@ const Settings = () => {
         try {
             const result = await invoke('restore_now');
             setAlertConfig({ isOpen: true, type: 'success', title: 'Cloud Restore Successful', message: result });
+            fetchLatestBackupInfo();
         } catch (e) {
             setAlertConfig({ isOpen: true, type: 'error', title: 'Cloud Restore Failed', message: String(e) });
         } finally {
             setIsSyncing(false);
+        }
+    };
+
+    const handleResetDatabase = async () => {
+        try {
+            await invoke('reset_database');
+            setIsResetModalOpen(false);
+            setAlertConfig({ isOpen: true, type: 'success', title: 'Database Reset', message: 'All local data and encryption keys have been cleared.' });
+        } catch (e) {
+            setAlertConfig({ isOpen: true, type: 'error', title: 'Reset Failed', message: String(e) });
         }
     };
 
@@ -268,7 +296,9 @@ const Settings = () => {
                                     <Cloud size={20} style={{ color: 'var(--primary)' }} />
                                     <div style={{ flex: 1 }}>
                                         <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)' }}>Cloud Backup Active</p>
-                                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>System ready for data synchronization</p>
+                                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                            {latestBackup ? `Last Backup: ${latestBackup}` : 'System ready for data synchronization'}
+                                        </p>
                                     </div>
                                 </div>
 
@@ -414,8 +444,25 @@ const Settings = () => {
                                             <Upload size={16} /> Import Local
                                         </button>
                                     </div>
+                                    <div style={{ marginTop: '1rem' }}>
+                                        <button 
+                                            className="btn-glass" 
+                                            onClick={() => setIsResetModalOpen(true)}
+                                            style={{ 
+                                                justifyContent: 'center', 
+                                                padding: '0.6rem', 
+                                                fontSize: '0.8rem', 
+                                                width: '100%',
+                                                color: '#ef4444',
+                                                background: 'rgba(239, 68, 68, 0.05)',
+                                                borderColor: 'rgba(239, 68, 68, 0.1)'
+                                            }}
+                                        >
+                                            <RefreshCw size={16} /> Reset Database (Delete All Data)
+                                        </button>
+                                    </div>
                                     <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                                        Manually export or restore local database files.
+                                        Manually export, restore, or completely wipe local database files.
                                     </p>
                                 </div>
                             </div>
@@ -436,6 +483,14 @@ const Settings = () => {
                 type={alertConfig.type}
                 title={alertConfig.title}
                 message={alertConfig.message}
+            />
+
+            <DeleteConfirmationModal
+                isOpen={isResetModalOpen}
+                onClose={() => setIsResetModalOpen(false)}
+                onConfirm={handleResetDatabase}
+                itemName="ALL local database data and encryption keys"
+                title="Reset Database"
             />
         </div>
     );

@@ -51,6 +51,33 @@ const toDisplayDate = (isoDate) => {
     return isoDate;
 };
 
+// Helper: Increment invoice ID (e.g. INV-3945 -> INV-3946)
+const incrementInvoiceId = (id) => {
+    if (!id) return 'INV-1';
+    
+    // Find the last group of digits in the string
+    const match = id.match(/(.*?)(\d+)$/);
+    if (match) {
+        const prefix = match[1];
+        const number = match[2];
+        const nextNumber = (parseInt(number, 10) + 1).toString();
+        
+        // Preserve leading zeros if any
+        const paddedNumber = nextNumber.padStart(number.length, '0');
+        return prefix + paddedNumber;
+    }
+    
+    // Fallback if no digits found at the end
+    const lastNumMatch = id.match(/\d+/g);
+    if (lastNumMatch) {
+        const lastNum = lastNumMatch[lastNumMatch.length - 1];
+        const nextNum = (parseInt(lastNum, 10) + 1).toString();
+        return id.replace(new RegExp(lastNum + '$'), nextNum.padStart(lastNum.length, '0'));
+    }
+
+    return id + '-1';
+};
+
 // Helper: Convert number to Indian currency words (Rupees and Paise)
 const amountToWords = (amount) => {
     try {
@@ -81,7 +108,7 @@ const CreateInvoice = () => {
 
     // Invoice State with V2 fields
     const [invoice, setInvoice] = useState({
-        id: `INV-${Math.floor(Math.random() * 10000)}`,
+        id: '',
         client_name: '',
         client_details: null,
         vendor_code: '',
@@ -141,6 +168,18 @@ const CreateInvoice = () => {
                         state_code: invData.state_code || client?.state_code || '33',
                         pincode: invData.pincode || client?.pincode || ''
                     });
+                } else {
+                    // Fetch latest ID and increment
+                    try {
+                        const latestId = await invoke('get_latest_invoice_id');
+                        setInvoice(prev => ({
+                            ...prev,
+                            id: incrementInvoiceId(latestId)
+                        }));
+                    } catch (e) {
+                        console.error("Failed to fetch latest invoice ID", e);
+                        setInvoice(prev => ({ ...prev, id: 'INV-1' }));
+                    }
                 }
             } catch (e) {
                 console.error("Failed to load data", e);
