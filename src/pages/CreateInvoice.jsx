@@ -16,19 +16,20 @@ import lfiLogo from '../assets/Logo.png';
 
 // Helper: Format date input with auto-hyphen (DD-MM-YYYY)
 const formatDateInput = (value) => {
-    // Remove all non-digits
     let digits = value.replace(/\D/g, '');
-
-    // Limit to 8 digits (DDMMYYYY)
     digits = digits.substring(0, 8);
 
-    // Add hyphens automatically
-    if (digits.length >= 4) {
-        return `${digits.substring(0, 2)}-${digits.substring(2, 4)}-${digits.substring(4)}`;
-    } else if (digits.length >= 2) {
-        return `${digits.substring(0, 2)}-${digits.substring(2)}`;
+    let formatted = '';
+    if (digits.length > 0) {
+        formatted += digits.substring(0, 2);
     }
-    return digits;
+    if (digits.length > 2) {
+        formatted += '-' + digits.substring(2, 4);
+    }
+    if (digits.length > 4) {
+        formatted += '-' + digits.substring(4, 8);
+    }
+    return formatted;
 };
 
 // Convert DD-MM-YYYY to YYYY-MM-DD for storage
@@ -54,19 +55,19 @@ const toDisplayDate = (isoDate) => {
 // Helper: Increment invoice ID (e.g. INV-3945 -> INV-3946)
 const incrementInvoiceId = (id) => {
     if (!id) return 'INV-1';
-    
+
     // Find the last group of digits in the string
     const match = id.match(/(.*?)(\d+)$/);
     if (match) {
         const prefix = match[1];
         const number = match[2];
         const nextNumber = (parseInt(number, 10) + 1).toString();
-        
+
         // Preserve leading zeros if any
         const paddedNumber = nextNumber.padStart(number.length, '0');
         return prefix + paddedNumber;
     }
-    
+
     // Fallback if no digits found at the end
     const lastNumMatch = id.match(/\d+/g);
     if (lastNumMatch) {
@@ -130,6 +131,7 @@ const CreateInvoice = () => {
     });
 
     const [totals, setTotals] = useState({ subtotal: 0, cgst: 0, sgst: 0, igst: 0, total: 0 });
+    const [taxRates, setTaxRates] = useState({ cgst: 9, sgst: 9 });
 
     // State for Part Selector Modal and New Item Form
     const [isPartModalOpen, setIsPartModalOpen] = useState(false);
@@ -193,11 +195,14 @@ const CreateInvoice = () => {
         let c_tax = 0, s_tax = 0, i_tax = 0;
         const isLocal = invoice.state_code === '33';
         if (sub > 0) {
-            if (isLocal) { c_tax = sub * 0.09; s_tax = sub * 0.09; }
+            if (isLocal) {
+                c_tax = sub * (taxRates.cgst / 100);
+                s_tax = sub * (taxRates.sgst / 100);
+            }
             else { i_tax = sub * 0.18; }
         }
         setTotals({ subtotal: sub, cgst: c_tax, sgst: s_tax, igst: i_tax, total: sub + c_tax + s_tax + i_tax });
-    }, [invoice.items, invoice.state_code]);
+    }, [invoice.items, invoice.state_code, taxRates]);
 
     const showAlert = (type, title, message) => setAlertConfig({ isOpen: true, type, title, message });
 
@@ -217,36 +222,42 @@ const CreateInvoice = () => {
         const qty = parseFloat(newItem.qty) || 0;
         const rate = parseFloat(newItem.rate) || 0;
         const amount = qty * rate;
-        
+
         if (newItem.part_number || newItem.name) {
             setInvoice(prev => ({
                 ...prev,
                 items: [...prev.items, { ...newItem, qty, rate, amount }]
             }));
-            // Reset form
             setNewItem({ part_number: '', name: '', process: '', qty: '', rate: '' });
         }
     };
 
     const handlePartSelect = (part) => {
         setNewItem({
+            ...newItem,
             part_number: part.part_number,
             name: part.name,
             process: part.process || '',
             qty: 1,
             rate: part.price || 0
         });
+        if (!invoice.po_no && part.po_no) {
+            setInvoice(prev => ({ ...prev, po_no: part.po_no, po_date: part.po_date || '' }));
+        }
     };
 
     const updateItem = (index, field, value) => {
         const newItems = [...invoice.items];
         const item = { ...newItems[index], [field]: value };
         if (field === 'part_number') {
-            const product = inventory.find(p => p.part_number === parseInt(value));
+            const product = inventory.find(p => String(p.part_number) === String(value));
             if (product) {
                 item.name = product.name;
                 item.process = product.process || '';
                 item.rate = product.price;
+                if (!invoice.po_no && product.po_no) {
+                    setInvoice(prev => ({ ...prev, po_no: product.po_no, po_date: product.po_date || '' }));
+                }
             }
         }
         if (field === 'qty' || field === 'rate' || field === 'part_number') {
@@ -488,9 +499,10 @@ const CreateInvoice = () => {
                         <input type="text" className="form-input" value={invoice.transport_mode}
                             onChange={e => setInvoice({ ...invoice, transport_mode: e.target.value })} placeholder="By Road" />
                     </div>
-
                     <div className="form-group">
-
+                        <label>CGST Rate (%)</label>
+                        <input type="number" className="form-input" value={taxRates.cgst}
+                            onChange={e => setTaxRates({ ...taxRates, cgst: e.target.value })} placeholder="9" />
                     </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
@@ -528,12 +540,17 @@ const CreateInvoice = () => {
                                 }} /> Sale (HSN)
                         </label>
                     </div>
+                    <div className="form-group">
+                        <label>SGST Rate (%)</label>
+                        <input type="number" className="form-input" value={taxRates.sgst}
+                            onChange={e => setTaxRates({ ...taxRates, sgst: e.target.value })} placeholder="9" />
+                    </div>
                 </div>
 
                 {/* Inline Add Line Item Section */}
                 <div style={{ background: 'var(--bg-tertiary)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1rem', border: '1px solid var(--border)' }}>
                     <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-primary)', fontSize: '0.9rem' }}>Add Line Item</h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 80px 80px auto', gap: '0.75rem', alignItems: 'end' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 1fr) minmax(120px, 1fr) minmax(100px, 1fr) 70px 80px auto', gap: '0.75rem', alignItems: 'end' }}>
                         <div className="form-group" style={{ marginBottom: 0 }}>
                             <label style={{ fontSize: '0.75rem' }}>Part Number</label>
                             <div
@@ -548,11 +565,12 @@ const CreateInvoice = () => {
                                     borderRadius: 'var(--radius-md)',
                                     cursor: 'pointer',
                                     color: newItem.part_number ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                    transition: 'border-color 0.2s'
+                                    transition: 'border-color 0.2s',
+                                    minHeight: '38px'
                                 }}
                             >
                                 <Search size={14} />
-                                <span>{newItem.part_number || 'Select part...'}</span>
+                                <span>{newItem.part_number || 'Select...'}</span>
                             </div>
                         </div>
                         <div className="form-group" style={{ marginBottom: 0 }}>
@@ -644,7 +662,7 @@ const CreateInvoice = () => {
                                 </thead>
                                 <tbody>
                                     {invoice.items.map((item, i) => (
-                                        <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                                        <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                             <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{i + 1}</td>
                                             <td style={{ padding: '0.75rem', color: 'var(--primary)', fontWeight: 500 }}>{item.part_number || '-'}</td>
                                             <td style={{ padding: '0.75rem', color: 'var(--text-primary)' }}>{item.name || '-'}</td>
@@ -684,12 +702,15 @@ const CreateInvoice = () => {
             {/* Print Layout */}
             <div className="print-container-wrapper">
                 <div className="invoice-paper" ref={invoiceRef}>
+                    <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+                        <h2 style={{ fontSize: '1.5rem', margin: 0, textTransform: 'uppercase', letterSpacing: '2px', borderBottom: '2px solid #000', display: 'inline-block', paddingBottom: '2px' }}>INVOICE</h2>
+                    </div>
                     <div className="inv-header">
                         <div className="logo-section"><img src={lfiLogo} alt="LFI Logo" className="logo-img" /></div>
                         <div className="company-details">
                             <h1>LITTLE FLOWER INDUSTRIES</h1>
                             <p>ISO 9001-2015 COMPANY</p>
-                            <p>#45/A, Thiruvalluvar Street, TMP Nagar, Padi, Chennai- 600 050</p>
+                            <p>No:209, new tiny sector, ambattur industrial estate, chennai-600058</p>
                             <p>Email: lfijustus71@gmail.com</p>
                         </div>
                         <div className="gst-section">
@@ -727,11 +748,11 @@ const CreateInvoice = () => {
                         <thead>
                             <tr>
                                 <th style={{ width: '40px', textAlign: 'center' }}>S.No</th>
-                                <th style={{ width: '150px', textAlign: 'center' }}>Part Name</th>
-                                <th style={{ width: '100px', textAlign: 'center' }}>Part Number</th>
-                                <th style={{ width: '100px', textAlign: 'center' }}>Process</th>
-                                <th style={{ width: '60px', textAlign: 'center' }}>Qty</th>
-                                <th style={{ width: '80px', textAlign: 'center' }}>Rate</th>
+                                <th style={{ width: '130px', textAlign: 'center' }}>Part Name</th>
+                                <th style={{ width: '90px', textAlign: 'center' }}>Part Number</th>
+                                <th style={{ width: '80px', textAlign: 'center' }}>Process</th>
+                                <th style={{ width: '50px', textAlign: 'center' }}>Qty</th>
+                                <th style={{ width: '70px', textAlign: 'center' }}>Rate</th>
                                 <th style={{ textAlign: 'center' }}>Amount</th>
                             </tr>
                         </thead>
@@ -786,20 +807,26 @@ const CreateInvoice = () => {
                             <div className="amount-words" style={{ marginTop: '10px' }}>
                                 <p><strong>Total Invoice Amount in Words:</strong></p>
                                 <p style={{ textTransform: 'capitalize' }}>{amountToWords(totals.total)}</p>
-                                <p style={{ fontStyle: 'italic', fontWeight: 'bold', marginTop: '10px' }}>Received the goods in good condition</p>
+                                <p style={{ fontStyle: 'italic', fontWeight: 'bold', marginTop: '10px', fontSize: '1.2rem' }}>Received the goods in good condition</p>
                             </div>
                         </div>
                         <div className="totals-section">
                             <div className="row"><span>Total Before Tax</span><span>₹{totals.subtotal.toFixed(2)}</span></div>
-                            <div className="row"><span>CGST (9%)</span><span>₹{totals.cgst.toFixed(2)}</span></div>
-                            <div className="row"><span>SGST (9%)</span><span>₹{totals.sgst.toFixed(2)}</span></div>
+                            <div className="row">
+                                <span>CGST ({taxRates.cgst}%)</span>
+                                <span>₹{totals.cgst.toFixed(2)}</span>
+                            </div>
+                            <div className="row">
+                                <span>SGST ({taxRates.sgst}%)</span>
+                                <span>₹{totals.sgst.toFixed(2)}</span>
+                            </div>
                             <div className="row grand-total"><span>Total Amount</span><span>₹{totals.total.toFixed(2)}</span></div>
                         </div>
                     </div>
 
                     <div className="signature-section">
                         <div className="sign-box" style={{ marginLeft: 'auto', marginRight: '50px' }}>
-                            <p>For LITTLE FLOWER INDUSTRIES</p>
+                            <p style={{ fontWeight: 'bold', fontSize: '14px' }}>For LITTLE FLOWER INDUSTRIES</p>
                             <br /><br />
                             <p>Authorised Signature</p>
                         </div>
@@ -919,7 +946,7 @@ const CreateInvoice = () => {
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 };
 

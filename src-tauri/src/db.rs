@@ -74,7 +74,7 @@ pub fn ensure_tables(conn: &Connection) -> Result<(), String> {
         "CREATE TABLE IF NOT EXISTS inventory (
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
-            part_number INTEGER UNIQUE,
+            part_number TEXT UNIQUE,
             sku TEXT,
             price REAL DEFAULT 0.0,
             process TEXT
@@ -82,7 +82,9 @@ pub fn ensure_tables(conn: &Connection) -> Result<(), String> {
         [],
     ).map_err(|e| e.to_string())?;
     let _ = conn.execute("ALTER TABLE inventory ADD COLUMN process TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE inventory ADD COLUMN part_number INTEGER", []).ok();
+    let _ = conn.execute("ALTER TABLE inventory ADD COLUMN part_number TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE inventory ADD COLUMN po_no TEXT", []).ok();
+    let _ = conn.execute("ALTER TABLE inventory ADD COLUMN po_date TEXT", []).ok();
 
     // Customers
     conn.execute(
@@ -318,37 +320,45 @@ pub fn get_revenue_history(conn: &Connection) -> Result<Vec<RevenuePoint>> {
 pub struct InventoryItem {
     pub id: Option<i64>,
     pub name: String,
-    pub part_number: Option<i64>,
+    pub part_number: Option<String>,
     pub price: f64,
     pub process: String,
+    pub po_no: Option<String>,
+    pub po_date: Option<String>,
 }
 
 pub fn get_inventory(conn: &Connection) -> Result<Vec<InventoryItem>> {
-    let mut stmt = conn.prepare("SELECT id, name, part_number, price, process FROM inventory")?;
+    let mut stmt = conn.prepare("SELECT id, name, part_number, price, process, po_no, po_date FROM inventory")?;
     let item_iter = stmt.query_map([], |row| {
         Ok(InventoryItem {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            part_number: row.get(2)?,
-            price: row.get(3)?,
+            id: row.get(0).ok(),
+            name: row.get(1).unwrap_or_else(|_| "Unknown".to_string()),
+            part_number: row.get(2).ok(),
+            price: row.get(3).unwrap_or(0.0),
             process: row.get(4).unwrap_or_default(),
+            po_no: row.get(5).unwrap_or_default(),
+            po_date: row.get(6).unwrap_or_default(),
         })
     })?;
     let mut items = Vec::new();
     for item in item_iter {
-        items.push(item?);
+        if let Ok(i) = item {
+            items.push(i);
+        }
     }
     Ok(items)
 }
 
 pub fn add_item(conn: &Connection, item: &InventoryItem) -> Result<()> {
     conn.execute(
-        "INSERT INTO inventory (name, part_number, price, process) VALUES (?1, ?2, ?3, ?4)",
+        "INSERT INTO inventory (name, part_number, price, process, po_no, po_date) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         (
             &item.name,
             &item.part_number,
             &item.price,
             &item.process,
+            &item.po_no,
+            &item.po_date,
         ),
     )?;
     log_activity(
@@ -363,12 +373,14 @@ pub fn add_item(conn: &Connection, item: &InventoryItem) -> Result<()> {
 
 pub fn update_item(conn: &Connection, item: &InventoryItem) -> Result<()> {
     conn.execute(
-        "UPDATE inventory SET name=?1, part_number=?2, price=?3, process=?4 WHERE id=?5",
+        "UPDATE inventory SET name=?1, part_number=?2, price=?3, process=?4, po_no=?5, po_date=?6 WHERE id=?7",
         (
             &item.name,
             &item.part_number,
             &item.price,
             &item.process,
+            &item.po_no,
+            &item.po_date,
             &item.id,
         ),
     )?;
