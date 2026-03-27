@@ -12,7 +12,7 @@
     height: 100vh;
     position: relative;
     z-index: 1;
-    transition: margin-left 0.3s ease-in-out;
+    transition: margin-left var(--transition-standard) ease-in-out;
 }
 
 .app-layout.collapsed .main-content {

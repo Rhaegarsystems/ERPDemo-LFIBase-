@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { X, CheckCircle, Clock, AlertCircle, Ban } from 'lucide-react';
 import '../styles/Modal.css';
 
@@ -29,15 +28,12 @@ const InvoiceStatusModal = ({ isOpen, onClose, invoice, onStatusChange }) => {
     if (!invoice) return null;
 
     return (
-        <AnimatePresence>
+        <>
             {isOpen && (
                 <div className="modal-overlay" onClick={onClose}>
-                    <motion.div
+                    <div
                         className="modal-container"
                         style={{ width: '450px' }}
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="modal-header">
@@ -97,8 +93,7 @@ const InvoiceStatusModal = ({ isOpen, onClose, invoice, onStatusChange }) => {
                                                 borderRadius: 'var(--radius-md)',
                                                 border: isSelected ? `2px solid ${option.color}` : '2px solid var(--border)',
                                                 background: isSelected ? option.bg : 'var(--bg-secondary)',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s ease'
+                                                cursor: 'pointer'
                                             }}
                                         >
                                             <IconComponent
@@ -127,10 +122,10 @@ const InvoiceStatusModal = ({ isOpen, onClose, invoice, onStatusChange }) => {
                                 {isLoading ? 'Saving...' : 'Update Status'}
                             </button>
                         </div>
-                    </motion.div>
+                    </div>
                 </div>
             )}
-        </AnimatePresence>
+        </>
     );
 };
 

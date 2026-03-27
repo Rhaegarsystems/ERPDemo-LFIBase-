@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, User, MapPin, Phone } from 'lucide-react';
 import '../styles/Modal.css';
 
@@ -43,15 +42,12 @@ const CustomerSelectorModal = ({ isOpen, onClose, customers, onSelect }) => {
     }, [isOpen, onClose]);
 
     return (
-        <AnimatePresence>
+        <>
             {isOpen && (
                 <div className="modal-overlay" onClick={onClose}>
-                    <motion.div
+                    <div
                         className="modal-container"
                         style={{ width: '650px', maxWidth: '95vw', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="modal-header">
@@ -132,8 +128,7 @@ const CustomerSelectorModal = ({ isOpen, onClose, customers, onSelect }) => {
                                             alignItems: 'center',
                                             padding: '1rem 1.5rem',
                                             borderBottom: '1px solid var(--border)',
-                                            cursor: 'pointer',
-                                            transition: 'background 0.15s ease'
+                                            cursor: 'pointer'
                                         }}
                                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(139, 92, 246, 0.08)'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
@@ -166,10 +161,10 @@ const CustomerSelectorModal = ({ isOpen, onClose, customers, onSelect }) => {
                                 Cancel
                             </button>
                         </div>
-                    </motion.div>
+                    </div>
                 </div>
             )}
-        </AnimatePresence>
+        </>
     );
 };
 

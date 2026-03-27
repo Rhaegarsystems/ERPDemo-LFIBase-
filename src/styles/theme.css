@@ -66,10 +66,9 @@
     --radius-lg: 1rem;
     --radius-xl: 1.5rem;
     --radius-full: 9999px;
-
     /* Transitions */
-    --transition-fast: 200ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-smooth: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-fast: 150ms ease-out;
+    --transition-standard: 250ms ease-out;
 }
 
 [data-theme='dark'] {
@@ -122,6 +121,9 @@
     --glow-accent: 0 4px 12px rgba(0, 0, 0, 0.3);
 
     --gradient-title: linear-gradient(to right, #ffffff, var(--primary));
+    /* Transitions */
+    --transition-fast: 150ms ease-out;
+    --transition-standard: 250ms ease-out;
 }
 
 body {
@@ -133,23 +135,38 @@ body {
     padding: 0;
     overflow: hidden;
     /* App-like feel */
+    /* Transitions */
+    --transition-fast: 150ms ease-out;
+    --transition-standard: 250ms ease-out;
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
+    /* Transitions */
+    --transition-fast: 150ms ease-out;
+    --transition-standard: 250ms ease-out;
 }
 
 ::-webkit-scrollbar-track {
     background: transparent;
+    /* Transitions */
+    --transition-fast: 150ms ease-out;
+    --transition-standard: 250ms ease-out;
 }
 
 ::-webkit-scrollbar-thumb {
     background: var(--bg-tertiary);
     border-radius: var(--radius-full);
+    /* Transitions */
+    --transition-fast: 150ms ease-out;
+    --transition-standard: 250ms ease-out;
 }
 
 ::-webkit-scrollbar-thumb:hover {
     background: var(--border-hover);
+    /* Transitions */
+    --transition-fast: 150ms ease-out;
+    --transition-standard: 250ms ease-out;
 }

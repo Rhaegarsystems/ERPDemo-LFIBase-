@@ -14,7 +14,7 @@ function App() {
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 2000); // Simulate init
+    const timer = setTimeout(() => setLoading(false), 500); // Reduced init delay
     return () => clearTimeout(timer);
   }, []);
 

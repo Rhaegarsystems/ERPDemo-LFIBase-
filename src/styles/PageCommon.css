@@ -17,7 +17,6 @@
     gap: 8px;
     cursor: pointer;
     box-shadow: var(--glow-primary);
-    transition: all var(--transition-fast);
 }
 
 .btn-primary-glow:hover {
@@ -145,7 +144,6 @@
     width: 100%;
     outline: none;
     font-size: 0.95rem;
-    transition: all var(--transition-fast);
 }
 
 .form-input:focus {

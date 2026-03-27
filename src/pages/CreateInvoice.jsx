@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
 import { Save, Printer, ArrowLeft, Plus, Trash2, Search } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
+import { openPath } from '@tauri-apps/plugin-opener';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { toWords } from 'number-to-words';
@@ -100,6 +100,7 @@ const amountToWords = (amount) => {
 const CreateInvoice = () => {
     const navigate = useNavigate();
     const { id } = useParams();
+    const location = useLocation();
     const invoiceRef = useRef(null);
     const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'success', title: '', message: '' });
     const [pdfProgress, setPdfProgress] = useState({ isGenerating: false, progress: 0, status: '' });
@@ -189,6 +190,52 @@ const CreateInvoice = () => {
         };
         loadData();
     }, [id]);
+
+    // Handle auto-print if query param is present
+    useEffect(() => {
+        const queryParams = new URLSearchParams(location.search);
+        if (queryParams.get('print') === 'true' && invoice.id && invoice.items.length > 0) {
+            // Give a small delay for the UI to render completely
+            const timer = setTimeout(async () => {
+                // First save the invoice to ensure DB is up to date
+                try {
+                    await invoke('save_invoice', {
+                        invoice: {
+                            id: invoice.id,
+                            client_name: invoice.client_name,
+                            vendor_code: invoice.vendor_code,
+                            date: toISODate(invoice.date),
+                            due_date: invoice.due_date,
+                            amount: totals.total,
+                            status: invoice.status,
+                            dc_no: invoice.dc_no,
+                            dc_date: invoice.dc_date,
+                            po_no: invoice.po_no,
+                            po_date: invoice.po_date,
+                            transport_mode: invoice.transport_mode,
+                            invoice_type: invoice.invoice_type,
+                            items_json: JSON.stringify(invoice.items),
+                            hsn_code: invoice.hsn_code,
+                            sac_code: invoice.sac_code,
+                            state: invoice.state,
+                            state_code: invoice.state_code,
+                            pincode: invoice.pincode
+                        }
+                    });
+                    
+                    // Then trigger the PDF generation
+                    await handlePrint();
+                    
+                    // Finally navigate back to invoices list
+                    navigate('/invoices', { replace: true });
+                } catch (e) {
+                    console.error("Auto-print save failed:", e);
+                    showAlert('error', 'Auto-Print Error', 'Failed to save before printing: ' + e);
+                }
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [location.search, invoice.id, id, totals.total]);
 
     useEffect(() => {
         const sub = invoice.items.reduce((acc, item) => acc + (item.amount || 0), 0);
@@ -381,6 +428,17 @@ const CreateInvoice = () => {
                 setPdfProgress({ isGenerating: true, progress: 95, status: 'Saving to disk...' });
                 await writeFile(filePath, new Uint8Array(pdfData));
                 setPdfProgress({ isGenerating: false, progress: 100, status: '' });
+                
+                // Add a small delay to ensure OS has finished writing and file is ready to be opened
+                await new Promise(r => setTimeout(r, 500));
+                
+                try {
+                    // Automatically open the PDF
+                    await openPath(filePath);
+                } catch (openErr) {
+                    console.error('Failed to open PDF:', openErr);
+                }
+                
                 showAlert('success', 'PDF Saved', `Saved to ${filePath}`);
             } else {
                 setPdfProgress({ isGenerating: false, progress: 0, status: '' });
@@ -565,7 +623,6 @@ const CreateInvoice = () => {
                                     borderRadius: 'var(--radius-md)',
                                     cursor: 'pointer',
                                     color: newItem.part_number ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                    transition: 'border-color 0.2s',
                                     minHeight: '38px'
                                 }}
                             >
@@ -662,7 +719,7 @@ const CreateInvoice = () => {
                                 </thead>
                                 <tbody>
                                     {invoice.items.map((item, i) => (
-                                        <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                        <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                                             <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{i + 1}</td>
                                             <td style={{ padding: '0.75rem', color: 'var(--primary)', fontWeight: 500 }}>{item.part_number || '-'}</td>
                                             <td style={{ padding: '0.75rem', color: 'var(--text-primary)' }}>{item.name || '-'}</td>
@@ -682,8 +739,7 @@ const CreateInvoice = () => {
                                                         color: 'var(--danger)',
                                                         display: 'inline-flex',
                                                         alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        transition: 'all 0.2s'
+                                                        justifyContent: 'center'
                                                     }}
                                                     title={`Delete ${item.name || 'Item'}`}
                                                 >
@@ -900,9 +956,7 @@ const CreateInvoice = () => {
                         justifyContent: 'center',
                         zIndex: 9999
                     }}>
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
+                        <div
                             style={{
                                 background: 'var(--bg-secondary)',
                                 borderRadius: 'var(--radius-lg)',
@@ -927,11 +981,9 @@ const CreateInvoice = () => {
                                 overflow: 'hidden',
                                 marginBottom: '0.75rem'
                             }}>
-                                <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${pdfProgress.progress}%` }}
-                                    transition={{ duration: 0.3 }}
+                                <div
                                     style={{
+                                        width: `${pdfProgress.progress}%`,
                                         height: '100%',
                                         background: 'linear-gradient(90deg, #8b5cf6, #6366f1)',
                                         borderRadius: '10px'
@@ -942,7 +994,7 @@ const CreateInvoice = () => {
                             <p style={{ margin: 0, fontWeight: 600, color: 'var(--primary)', fontSize: '1.1rem' }}>
                                 {pdfProgress.progress}%
                             </p>
-                        </motion.div>
+                        </div>
                     </div>
                 )}
             </div>

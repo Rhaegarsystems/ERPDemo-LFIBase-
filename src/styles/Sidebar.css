@@ -11,6 +11,7 @@
     z-index: 50;
     box-shadow: 20px 0 40px rgba(0, 0, 0, 0.1);
     overflow: hidden;
+    transition: width var(--transition-standard) ease-in-out;
 }
 
 .sidebar-header {
@@ -82,13 +83,13 @@
     border-radius: var(--radius-lg);
     color: var(--text-secondary);
     font-weight: 500;
-    transition: all var(--transition-fast);
     border: 1px solid transparent;
     margin-bottom: 4px;
     white-space: nowrap;
     background: none;
     cursor: pointer;
     text-decoration: none;
+    transition: all var(--transition-fast);
 }
 
 .sidebar.collapsed .nav-item {
@@ -106,7 +107,6 @@
 .nav-item:hover {
     background: rgba(255, 255, 255, 0.03);
     color: var(--text-primary);
-    transform: translateX(4px);
 }
 
 .nav-item.active {

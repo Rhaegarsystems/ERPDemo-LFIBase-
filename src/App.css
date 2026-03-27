@@ -100,7 +100,6 @@ input[type="number"] {
   border-radius: var(--radius-md);
   padding: 0.5rem 1rem;
   font-weight: 500;
-  transition: all var(--transition-fast);
 }
 
 .btn-primary {
@@ -110,7 +109,6 @@ input[type="number"] {
 
 .btn-primary:hover {
   background-color: var(--primary-hover);
-  transform: translateY(-1px);
 }
 
 .btn-ghost {
@@ -122,19 +120,21 @@ input[type="number"] {
   color: var(--text-primary);
 }
 
-/* Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Animations - High-End Fast Fade */
+@keyframes fastFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-.page-content {
-  animation: fadeIn var(--transition-normal) ease-out forwards;
+.page-container, .dashboard-container {
+  animation: fastFadeIn var(--transition-standard) ease-out forwards;
 }
+
+.card, .stat-card, .dashboard-card, .glass-table-container {
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.btn, .icon-btn, .nav-item {
+  transition: all var(--transition-fast);
+}
+

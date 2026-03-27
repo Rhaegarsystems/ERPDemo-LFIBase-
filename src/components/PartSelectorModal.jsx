@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, Package } from 'lucide-react';
 import '../styles/Modal.css';
 
@@ -43,15 +42,12 @@ const PartSelectorModal = ({ isOpen, onClose, inventory, onSelect }) => {
     }, [isOpen, onClose]);
 
     return (
-        <AnimatePresence>
+        <>
             {isOpen && (
                 <div className="modal-overlay" onClick={onClose}>
-                    <motion.div
+                    <div
                         className="modal-container"
                         style={{ width: '700px', maxWidth: '95vw', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="modal-header">
@@ -132,7 +128,6 @@ const PartSelectorModal = ({ isOpen, onClose, inventory, onSelect }) => {
                                             padding: '1rem 1.5rem',
                                             borderBottom: '1px solid var(--border)',
                                             cursor: 'pointer',
-                                            transition: 'background 0.2s ease',
                                             gap: '1rem',
                                             alignItems: 'center'
                                         }}
@@ -168,10 +163,10 @@ const PartSelectorModal = ({ isOpen, onClose, inventory, onSelect }) => {
                                 Cancel
                             </button>
                         </div>
-                    </motion.div>
+                    </div>
                 </div>
             )}
-        </AnimatePresence>
+        </>
     );
 };
 

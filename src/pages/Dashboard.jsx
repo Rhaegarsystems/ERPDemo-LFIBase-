@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { IndianRupee, Users, ClipboardList, PlusCircle, Edit, Trash2, Save, FileText, User, Box, Activity, MapPin, Calendar, Building2 } from 'lucide-react';
+import { IndianRupee, Users, ClipboardList, PlusCircle, Edit, Trash2, Save, FileText, User, Box, Activity, Building2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import StatCard from '../components/StatCard';
 import '../styles/Dashboard.css';
@@ -100,35 +99,23 @@ const Dashboard = () => {
         <div className="dashboard-container">
             <header className="page-header">
                 <div>
-                    <motion.h1
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="page-title"
-                    >
+                    <h1 className="page-title">
                         Dashboard
-                    </motion.h1>
-                    <motion.p
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="page-subtitle"
-                    >
+                    </h1>
+                    <p className="page-subtitle">
                         Overview of your business performance.
-                    </motion.p>
+                    </p>
                 </div>
             </header>
 
             <div className="stats-grid">
                 {stats.map((stat, index) => (
-                    <StatCard key={index} {...stat} delay={index} />
+                    <StatCard key={index} {...stat} />
                 ))}
             </div>
 
-            <motion.div
+            <div
                 className="dashboard-card"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
                 style={{ marginTop: '1.5rem' }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
@@ -158,10 +145,8 @@ const Dashboard = () => {
                             {activityLogs.slice(0, 25).map((log) => {
                                 const actionStyle = getActionColor(log.action);
                                 return (
-                                    <motion.div
+                                    <div
                                         key={log.id}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
@@ -242,13 +227,13 @@ const Dashboard = () => {
                                         }}>
                                             {log.timestamp}
                                         </div>
-                                    </motion.div>
+                                    </div>
                                 );
                             })}
                         </div>
                     </div>
                 )}
-            </motion.div>
+            </div>
         </div>
     );
 };

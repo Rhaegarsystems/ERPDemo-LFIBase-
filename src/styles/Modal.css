@@ -11,6 +11,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    animation: fastFadeIn var(--transition-fast) ease-out;
+}
+
+@keyframes fastFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 /* Remove old backdrop styles */
@@ -34,6 +40,12 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    animation: modalSlideIn var(--transition-fast) ease-out;
+}
+
+@keyframes modalSlideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* Correcting positioning strategy: use flex overlay in parent or better motion props */
@@ -58,7 +70,7 @@
     color: var(--text-secondary);
     padding: 4px;
     border-radius: var(--radius-md);
-    transition: var(--transition-fast);
+    transition: all var(--transition-fast);
 }
 
 .close-btn:hover {
@@ -101,7 +113,7 @@
     border: 1px solid var(--border);
     color: var(--text-primary);
     font-family: inherit;
-    transition: var(--transition-fast);
+    transition: all var(--transition-fast);
 }
 
 .form-input:focus {

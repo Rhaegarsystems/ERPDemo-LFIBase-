@@ -46,7 +46,6 @@
 .icon-btn {
     padding: 6px;
     border-radius: var(--radius-md);
-    transition: all var(--transition-fast);
     color: var(--text-muted);
 }
 
@@ -59,6 +58,10 @@
     color: var(--primary);
 }
 
+.icon-btn.print:hover {
+    color: #10b981; /* Success/Green color */
+}
+
 .icon-btn.delete:hover {
     color: var(--danger);
 }
@@ -66,7 +69,6 @@
 /* Clickable row styles */
 .glass-table tr.clickable-row {
     cursor: pointer;
-    transition: all var(--transition-fast);
 }
 
 .glass-table tr.clickable-row:hover td {

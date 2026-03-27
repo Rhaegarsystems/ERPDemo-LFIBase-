@@ -13,7 +13,6 @@
     background: var(--bg-tertiary, rgba(255, 255, 255, 0.03));
     border-radius: var(--radius-md, 8px);
     border: 1px solid var(--border, rgba(255, 255, 255, 0.05));
-    transition: all 0.2s ease;
 }
 
 .detail-item:hover {

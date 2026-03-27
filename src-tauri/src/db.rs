@@ -1,9 +1,8 @@
+use keyring::Entry;
 use rusqlite::{Connection, Result};
 use std::fs;
-use std::sync::OnceLock;
 use tauri::AppHandle;
 use tauri::Manager;
-use keyring::Entry;
 use uuid::Uuid;
 
 const DB_KEY_ACCOUNT: &str = "database_encryption_key";
@@ -35,7 +34,10 @@ pub fn get_or_create_db_key(app_handle: &AppHandle) -> Result<String, String> {
         }
     }
 
-    let app_dir = app_handle.path().app_data_dir().expect("failed to get app data dir");
+    let app_dir = app_handle
+        .path()
+        .app_data_dir()
+        .expect("failed to get app data dir");
     let key_file_path = app_dir.join("secret.key");
 
     // 2. Try OS Keyring
@@ -49,13 +51,13 @@ pub fn get_or_create_db_key(app_handle: &AppHandle) -> Result<String, String> {
             } else {
                 // 4. Generate New Key
                 let new_key = format!("{}-{}", Uuid::new_v4(), Uuid::new_v4()).replace("-", "");
-                
+
                 // Try to save to keyring (might fail on some systems)
                 let _ = entry.set_password(&new_key);
-                
+
                 // Save to fallback file
                 let _ = fs::write(&key_file_path, &new_key);
-                
+
                 new_key
             }
         }
@@ -80,11 +82,20 @@ pub fn ensure_tables(conn: &Connection) -> Result<(), String> {
             process TEXT
         )",
         [],
-    ).map_err(|e| e.to_string())?;
-    let _ = conn.execute("ALTER TABLE inventory ADD COLUMN process TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE inventory ADD COLUMN part_number TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE inventory ADD COLUMN po_no TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE inventory ADD COLUMN po_date TEXT", []).ok();
+    )
+    .map_err(|e| e.to_string())?;
+    let _ = conn
+        .execute("ALTER TABLE inventory ADD COLUMN process TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE inventory ADD COLUMN part_number TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE inventory ADD COLUMN po_no TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE inventory ADD COLUMN po_date TEXT", [])
+        .ok();
 
     // Customers
     conn.execute(
@@ -104,13 +115,26 @@ pub fn ensure_tables(conn: &Connection) -> Result<(), String> {
             total_value REAL DEFAULT 0.0
         )",
         [],
-    ).map_err(|e| e.to_string())?;
-    let _ = conn.execute("ALTER TABLE customers ADD COLUMN vendor_code TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE customers ADD COLUMN address TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE customers ADD COLUMN gstin TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE customers ADD COLUMN state TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE customers ADD COLUMN state_code TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE customers ADD COLUMN pincode TEXT", []).ok();
+    )
+    .map_err(|e| e.to_string())?;
+    let _ = conn
+        .execute("ALTER TABLE customers ADD COLUMN vendor_code TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE customers ADD COLUMN address TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE customers ADD COLUMN gstin TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE customers ADD COLUMN state TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE customers ADD COLUMN state_code TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE customers ADD COLUMN pincode TEXT", [])
+        .ok();
 
     // Invoices
     conn.execute(
@@ -136,22 +160,53 @@ pub fn ensure_tables(conn: &Connection) -> Result<(), String> {
             pincode TEXT
         )",
         [],
-    ).map_err(|e| e.to_string())?;
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN client_name TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN vendor_code TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN transport_mode TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN invoice_type TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN items_json TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN dc_no TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN dc_date TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN po_no TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN po_date TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN due_date TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN hsn_code TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN sac_code TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN state TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN state_code TEXT", []).ok();
-    let _ = conn.execute("ALTER TABLE invoices ADD COLUMN pincode TEXT", []).ok();
+    )
+    .map_err(|e| e.to_string())?;
+    let _ = conn
+        .execute("ALTER TABLE invoices ADD COLUMN client_name TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE invoices ADD COLUMN vendor_code TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE invoices ADD COLUMN transport_mode TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE invoices ADD COLUMN invoice_type TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE invoices ADD COLUMN items_json TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE invoices ADD COLUMN dc_no TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE invoices ADD COLUMN dc_date TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE invoices ADD COLUMN po_no TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE invoices ADD COLUMN po_date TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE invoices ADD COLUMN due_date TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE invoices ADD COLUMN hsn_code TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE invoices ADD COLUMN sac_code TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE invoices ADD COLUMN state TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE invoices ADD COLUMN state_code TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE invoices ADD COLUMN pincode TEXT", [])
+        .ok();
 
     // Activity Logs
     conn.execute(
@@ -164,7 +219,8 @@ pub fn ensure_tables(conn: &Connection) -> Result<(), String> {
             timestamp TEXT
         )",
         [],
-    ).map_err(|e| e.to_string())?;
+    )
+    .map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -172,18 +228,19 @@ pub fn ensure_tables(conn: &Connection) -> Result<(), String> {
 pub fn open_encrypted_conn(app_handle: &AppHandle) -> Result<Connection, String> {
     let db_path = get_db_path(app_handle);
     let key = get_or_create_db_key(app_handle)?;
-    
+
     let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
-    
+
     // Apply encryption key
-    conn.pragma_update(None, "key", &key).map_err(|e| e.to_string())?;
-    
+    conn.pragma_update(None, "key", &key)
+        .map_err(|e| e.to_string())?;
+
     // Test connection
     match conn.query_row("SELECT count(*) FROM sqlite_master", [], |_| Ok(())) {
         Ok(_) => {
             ensure_tables(&conn)?;
             Ok(conn)
-        },
+        }
         Err(e) => {
             // If it fails (e.g. wrong key, or file is not encrypted), return error
             // DO NOT DELETE the file automatically as it might be a mismatch after restore
@@ -328,7 +385,8 @@ pub struct InventoryItem {
 }
 
 pub fn get_inventory(conn: &Connection) -> Result<Vec<InventoryItem>> {
-    let mut stmt = conn.prepare("SELECT id, name, part_number, price, process, po_no, po_date FROM inventory")?;
+    let mut stmt = conn
+        .prepare("SELECT id, name, part_number, price, process, po_no, po_date FROM inventory")?;
     let item_iter = stmt.query_map([], |row| {
         Ok(InventoryItem {
             id: row.get(0).ok(),
@@ -632,7 +690,10 @@ pub fn import_db(app_handle: &AppHandle, source_path: &std::path::Path) -> Resul
 
 pub fn reset_database(app_handle: &AppHandle) -> Result<(), String> {
     let db_path = get_db_path(app_handle);
-    let app_dir = app_handle.path().app_data_dir().expect("failed to get app data dir");
+    let app_dir = app_handle
+        .path()
+        .app_data_dir()
+        .expect("failed to get app data dir");
     let key_path = app_dir.join("secret.key");
 
     // Clear memory cache first

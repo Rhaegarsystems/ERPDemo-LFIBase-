@@ -1,7 +1,6 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import '../styles/GlassTable.css';
-import { Edit2, Trash2 } from 'lucide-react';
+import { Edit2, Trash2, Printer } from 'lucide-react';
 
 const GlassTable = ({ columns, data, actions, onRowClick }) => {
     return (
@@ -17,11 +16,8 @@ const GlassTable = ({ columns, data, actions, onRowClick }) => {
                 </thead>
                 <tbody>
                     {data.map((row, rowIndex) => (
-                        <motion.tr
+                        <tr
                             key={rowIndex}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: rowIndex * 0.05 }}
                             onClick={() => onRowClick && onRowClick(row)}
                             className={onRowClick ? 'clickable-row' : ''}
                         >
@@ -33,6 +29,11 @@ const GlassTable = ({ columns, data, actions, onRowClick }) => {
                             {actions && (
                                 <td>
                                     <div className="action-buttons" onClick={(e) => e.stopPropagation()}>
+                                        {actions.onPrint && (
+                                            <button className="icon-btn print" onClick={() => actions.onPrint(row)} title="Print/Save PDF">
+                                                <Printer size={16} />
+                                            </button>
+                                        )}
                                         <button className="icon-btn edit" onClick={() => actions.onEdit && actions.onEdit(row)}>
                                             <Edit2 size={16} />
                                         </button>
@@ -42,7 +43,7 @@ const GlassTable = ({ columns, data, actions, onRowClick }) => {
                                     </div>
                                 </td>
                             )}
-                        </motion.tr>
+                        </tr>
                     ))}
                 </tbody>
             </table>
@@ -51,4 +52,3 @@ const GlassTable = ({ columns, data, actions, onRowClick }) => {
 };
 
 export default GlassTable;
-

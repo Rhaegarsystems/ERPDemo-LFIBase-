@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
 import { Moon, Sun, Monitor, Info, Code, Calendar, Shield, Database, Download, Upload, Cloud, RefreshCw, Terminal, Copy, Archive } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
@@ -169,51 +168,22 @@ const Settings = () => {
         }
     };
 
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.1
-            }
-        }
-    };
-
-    const itemVariants = {
-        hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0 }
-    };
-
     return (
         <div className="page-content">
             <header className="page-header">
                 <div>
-                    <motion.h1
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="page-title"
-                    >
+                    <h1 className="page-title">
                         Settings
-                    </motion.h1>
-                    <motion.p
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="page-subtitle"
-                    >
+                    </h1>
+                    <p className="page-subtitle">
                         Manage your application preferences and data
-                    </motion.p>
+                    </p>
                 </div>
             </header>
 
-            <motion.div 
-                className="settings-container"
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-            >
+            <div className="settings-container">
                 {/* Appearance Card */}
-                <motion.div className="settings-card" variants={itemVariants}>
+                <div className="settings-card">
                     <div className="settings-card-header">
                         <div className="settings-card-icon">
                             <Monitor size={20} />
@@ -250,10 +220,10 @@ const Settings = () => {
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 'auto' }}>
                         Visual preferences are saved locally and persist across sessions.
                     </p>
-                </motion.div>
+                </div>
 
                 {/* Data Management Card */}
-                <motion.div className="settings-card" variants={itemVariants} style={{ height: 'auto' }}>
+                <div className="settings-card" style={{ height: 'auto' }}>
                     <div className="settings-card-header">
                         <div className="settings-card-icon" style={{ background: 'rgba(139, 92, 246, 0.1)', color: 'var(--primary)' }}>
                             <Database size={20} />
@@ -328,10 +298,10 @@ const Settings = () => {
                             Your data is encrypted locally before being uploaded to secure cloud storage.
                         </p>
                     </div>
-                </motion.div>
+                </div>
 
                 {/* System Info Card */}
-                <motion.div className="settings-card" variants={itemVariants} style={{ gridColumn: '1 / -1' }}>
+                <div className="settings-card" style={{ gridColumn: '1 / -1' }}>
                     <div className="settings-card-header">
                         <div className="settings-card-icon" style={{ background: 'rgba(107, 114, 128, 0.1)', color: 'var(--text-secondary)' }}>
                             <Info size={20} />
@@ -366,9 +336,7 @@ const Settings = () => {
 
                     {/* PIN Prompt Section */}
                     {showPinPrompt && !isDevMode && (
-                        <motion.div 
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
+                        <div 
                             style={{ 
                                 marginTop: '1.5rem', 
                                 padding: '1rem', 
@@ -391,7 +359,7 @@ const Settings = () => {
                                 <button className="btn-primary-glow" onClick={handlePinSubmit}>Unlock</button>
                                 <button className="btn-ghost" onClick={() => { setShowPinPrompt(false); setPinInput(''); }}>Cancel</button>
                             </div>
-                        </motion.div>
+                        </div>
                     )}
 
                     {/* Hidden Developer Section */}
@@ -474,8 +442,8 @@ const Settings = () => {
                         <p className="dev-name">Rhaegarsystems</p>
                         <p className="copyright">© 2026 Little Flower Industries. All rights reserved.</p>
                     </div>
-                </motion.div>
-            </motion.div>
+                </div>
+            </div>
 
             <AlertModal
                 isOpen={alertConfig.isOpen}

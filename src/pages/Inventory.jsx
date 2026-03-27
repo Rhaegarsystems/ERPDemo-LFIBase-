@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { Plus, Search, Filter, Package } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import GlassTable from '../components/GlassTable';
@@ -154,13 +153,9 @@ const Inventory = () => {
     <div className="page-container">
       <header className="page-header">
         <div>
-          <motion.h1
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="page-title"
-          >
+          <h1 className="page-title">
             Parts
-          </motion.h1>
+          </h1>
           <p className="page-subtitle">Manage your parts.</p>
         </div>
         <button className="btn-primary-glow" onClick={() => {

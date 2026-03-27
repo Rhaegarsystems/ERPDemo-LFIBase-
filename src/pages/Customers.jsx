@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { Plus, Search, Users } from 'lucide-react';
 import GlassTable from '../components/GlassTable';
 import Modal from '../components/Modal';
@@ -122,13 +121,9 @@ const Customers = () => {
         <div className="page-container">
             <header className="page-header">
                 <div>
-                    <motion.h1
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="page-title"
-                    >
+                    <h1 className="page-title">
                         Customers
-                    </motion.h1>
+                    </h1>
                     <p className="page-subtitle">Manage client relationships.</p>
                 </div>
                 <button className="btn-primary-glow" onClick={() => {

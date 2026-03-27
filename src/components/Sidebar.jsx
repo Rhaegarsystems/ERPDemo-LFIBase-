@@ -12,7 +12,6 @@ import {
     ChevronRight
 } from 'lucide-react';
 import '../styles/Sidebar.css';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const Sidebar = ({ isCollapsed, toggleSidebar }) => {
     const navItems = [
@@ -24,27 +23,21 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
     ];
 
     return (
-        <motion.aside
+        <aside
             className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}
-            animate={{ width: isCollapsed ? 80 : 280 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
+            style={{ width: isCollapsed ? 80 : 280 }}
         >
             <div className="sidebar-header">
                 <div className="brand-wrapper">
                     <img src={lfiLogo} alt="LFI" className="brand-logo" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'contain' }} />
-                    <AnimatePresence>
-                        {!isCollapsed && (
-                            <motion.span
-                                className="brand-subtitle"
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                style={{ marginLeft: '10px' }}
-                            >
-                                Little Flower Industries
-                            </motion.span>
-                        )}
-                    </AnimatePresence>
+                    {!isCollapsed && (
+                        <span
+                            className="brand-subtitle"
+                            style={{ marginLeft: '10px' }}
+                        >
+                            Little Flower Industries
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -57,17 +50,11 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
                         title={isCollapsed ? item.name : ''}
                     >
                         <div className="icon-wrapper">{item.icon}</div>
-                        <AnimatePresence>
-                            {!isCollapsed && (
-                                <motion.span
-                                    initial={{ opacity: 0, width: 0 }}
-                                    animate={{ opacity: 1, width: 'auto' }}
-                                    exit={{ opacity: 0, width: 0 }}
-                                >
-                                    {item.name}
-                                </motion.span>
-                            )}
-                        </AnimatePresence>
+                        {!isCollapsed && (
+                            <span>
+                                {item.name}
+                            </span>
+                        )}
                     </NavLink>
                 ))}
             </nav>
@@ -77,20 +64,14 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
                     <div className="icon-wrapper">
                         {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
                     </div>
-                    <AnimatePresence>
-                        {!isCollapsed && (
-                            <motion.span
-                                initial={{ opacity: 0, width: 0 }}
-                                animate={{ opacity: 1, width: 'auto' }}
-                                exit={{ opacity: 0, width: 0 }}
-                            >
-                                Collapse
-                            </motion.span>
-                        )}
-                    </AnimatePresence>
+                    {!isCollapsed && (
+                        <span>
+                            Collapse
+                        </span>
+                    )}
                 </button>
             </div>
-        </motion.aside>
+        </aside>
     );
 };
 

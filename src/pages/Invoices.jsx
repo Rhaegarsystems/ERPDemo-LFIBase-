@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { Plus, Search, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
@@ -72,6 +71,10 @@ const Invoices = () => {
         navigate(`/invoices/edit/${item.id}`);
     };
 
+    const handlePrint = (item) => {
+        navigate(`/invoices/edit/${item.id}?print=true`);
+    };
+
     const handleRowClick = (item) => {
         setSelectedInvoice(item);
         setIsStatusModalOpen(true);
@@ -92,13 +95,9 @@ const Invoices = () => {
         <div className="page-container">
             <header className="page-header">
                 <div>
-                    <motion.h1
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="page-title"
-                    >
+                    <h1 className="page-title">
                         Invoices
-                    </motion.h1>
+                    </h1>
                     <p className="page-subtitle">Billing and payments.</p>
                 </div>
                 <button className="btn-primary-glow" onClick={() => navigate('/invoices/create')}>
@@ -123,7 +122,7 @@ const Invoices = () => {
                 <GlassTable
                     columns={columns}
                     data={data}
-                    actions={{ onEdit: handleEdit, onDelete: handleDelete }}
+                    actions={{ onEdit: handleEdit, onDelete: handleDelete, onPrint: handlePrint }}
                     onRowClick={handleRowClick}
                 />
             )}

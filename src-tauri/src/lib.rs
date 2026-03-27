@@ -169,6 +169,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_shell::init())
         .manage(BackupState { _last_backup_check: Mutex::new(None) })
         .setup(|app| {
             match db::init_db(app.handle()) {
