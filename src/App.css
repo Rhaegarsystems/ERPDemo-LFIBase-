@@ -113,10 +113,14 @@ input[type="number"] {
 
 .btn-ghost {
   color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 8px 16px;
 }
 
 .btn-ghost:hover {
-  background-color: var(--bg-tertiary);
+  background: rgba(255, 255, 255, 0.15);
   color: var(--text-primary);
 }
 

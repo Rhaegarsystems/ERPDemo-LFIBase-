@@ -43,11 +43,11 @@ const Dashboard = () => {
 
     const getActionColor = (action) => {
         switch (action.toLowerCase()) {
-            case 'created': return { bg: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)' };
-            case 'updated': return { bg: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)' };
-            case 'deleted': return { bg: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' };
-            case 'saved': return { bg: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', border: 'rgba(139, 92, 246, 0.3)' };
-            default: return { bg: 'rgba(107, 114, 128, 0.15)', color: '#6b7280', border: 'rgba(107, 114, 128, 0.3)' };
+            case 'created': return { bg: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.1) 100%)', color: '#10b981', border: 'rgba(16, 185, 129, 0.4)' };
+            case 'updated': return { bg: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.1) 100%)', color: '#3b82f6', border: 'rgba(59, 130, 246, 0.4)' };
+            case 'deleted': return { bg: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.1) 100%)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.4)' };
+            case 'saved': return { bg: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(139, 92, 246, 0.1) 100%)', color: '#8b5cf6', border: 'rgba(139, 92, 246, 0.4)' };
+            default: return { bg: 'linear-gradient(135deg, rgba(107, 114, 128, 0.2) 0%, rgba(107, 114, 128, 0.1) 100%)', color: '#9ca3af', border: 'rgba(107, 114, 128, 0.4)' };
         }
     };
 
@@ -152,9 +152,9 @@ const Dashboard = () => {
                                             alignItems: 'center',
                                             gap: '1rem',
                                             padding: '1rem',
-                                            background: 'var(--bg-tertiary)',
+                                            background: 'linear-gradient(135deg, rgba(30, 30, 45, 0.8) 0%, rgba(40, 40, 60, 0.8) 100%)',
                                             borderRadius: 'var(--radius-md)',
-                                            border: '1px solid var(--border)',
+                                            border: '1px solid rgba(99, 102, 241, 0.2)',
                                         }}
                                     >
                                         {/* Action Icon */}

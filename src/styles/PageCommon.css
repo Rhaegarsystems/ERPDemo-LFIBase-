@@ -16,12 +16,11 @@
     align-items: center;
     gap: 8px;
     cursor: pointer;
-    box-shadow: var(--glow-primary);
+    transition: opacity 0.15s ease;
 }
 
 .btn-primary-glow:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
+    opacity: 0.85;
 }
 
 .controls-bar {
@@ -48,6 +47,11 @@
     color: var(--text-primary);
     width: 100%;
     padding: 12px 0;
+    outline: none;
+}
+
+.search-box input:focus {
+    outline: none;
 }
 
 .search-box input::placeholder {
@@ -148,5 +152,4 @@
 
 .form-input:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
 }

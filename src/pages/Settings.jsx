@@ -4,14 +4,14 @@ import { Moon, Sun, Monitor, Info, Code, Calendar, Shield, Database, Download, U
 import { invoke } from '@tauri-apps/api/core';
 import { save, open } from '@tauri-apps/plugin-dialog';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-import AlertModal from '../components/AlertModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
+import { useToast } from '../components/ToastProvider';
 import '../styles/PageCommon.css';
 import '../styles/Settings.css';
 
 const Settings = () => {
     const { theme, toggleTheme } = useTheme();
-    const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'success', title: '', message: '' });
+    const toast = useToast();
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
@@ -81,20 +81,20 @@ const Settings = () => {
                 setIsDevMode(true);
                 setShowPinPrompt(false);
                 setPinInput('');
-                setAlertConfig({ isOpen: true, type: 'success', title: 'Developer Mode', message: 'Developer tools have been enabled.' });
+                toast.success('Developer Mode', 'Developer tools have been enabled.');
             } else {
-                setAlertConfig({ isOpen: true, type: 'error', title: 'Invalid PIN', message: 'The developer PIN you entered is incorrect.' });
+                toast.error('Invalid PIN', 'The developer PIN you entered is incorrect.');
                 setPinInput('');
             }
         } catch (e) {
-            setAlertConfig({ isOpen: true, type: 'error', title: 'Error', message: String(e) });
+            toast.error('Error', String(e));
         }
     };
 
     const copyToClipboard = async (text) => {
         try {
             await writeText(text);
-            setAlertConfig({ isOpen: true, type: 'success', title: 'Copied', message: 'Encryption key copied to clipboard.' });
+            toast.success('Copied', 'Encryption key copied to clipboard.');
         } catch (e) {
             console.error(e);
         }
@@ -109,10 +109,10 @@ const Settings = () => {
 
             if (filePath) {
                 await invoke('export_db', { path: filePath });
-                setAlertConfig({ isOpen: true, type: 'success', title: 'Local Backup Successful', message: `Database backed up to ${filePath}.` });
+                toast.success('Local Backup Successful', `Database backed up to ${filePath}.`);
             }
         } catch (e) {
-            setAlertConfig({ isOpen: true, type: 'error', title: 'Backup Failed', message: String(e) });
+            toast.error('Backup Failed', String(e));
         }
     };
 
@@ -125,10 +125,10 @@ const Settings = () => {
 
             if (filePath) {
                 await invoke('import_db', { path: filePath });
-                setAlertConfig({ isOpen: true, type: 'success', title: 'Restore Successful', message: 'Database restored. Please restart the application to apply changes.' });
+                toast.success('Restore Successful', 'Database restored. Please restart the application to apply changes.');
             }
         } catch (e) {
-            setAlertConfig({ isOpen: true, type: 'error', title: 'Restore Failed', message: String(e) });
+            toast.error('Restore Failed', String(e));
         }
     };
 
@@ -136,10 +136,10 @@ const Settings = () => {
         setIsSyncing(true);
         try {
             const result = await invoke('backup_now');
-            setAlertConfig({ isOpen: true, type: 'success', title: 'Cloud Backup Successful', message: result });
+            toast.success('Cloud Backup Successful', result);
             fetchLatestBackupInfo();
         } catch (e) {
-            setAlertConfig({ isOpen: true, type: 'error', title: 'Cloud Backup Failed', message: String(e) });
+            toast.error('Cloud Backup Failed', String(e));
         } finally {
             setIsSyncing(false);
         }
@@ -149,10 +149,10 @@ const Settings = () => {
         setIsSyncing(true);
         try {
             const result = await invoke('restore_now');
-            setAlertConfig({ isOpen: true, type: 'success', title: 'Cloud Restore Successful', message: result });
+            toast.success('Cloud Restore Successful', result);
             fetchLatestBackupInfo();
         } catch (e) {
-            setAlertConfig({ isOpen: true, type: 'error', title: 'Cloud Restore Failed', message: String(e) });
+            toast.error('Cloud Restore Failed', String(e));
         } finally {
             setIsSyncing(false);
         }
@@ -162,9 +162,9 @@ const Settings = () => {
         try {
             await invoke('reset_database');
             setIsResetModalOpen(false);
-            setAlertConfig({ isOpen: true, type: 'success', title: 'Database Reset', message: 'All local data and encryption keys have been cleared.' });
+            toast.success('Database Reset', 'All local data and encryption keys have been cleared.');
         } catch (e) {
-            setAlertConfig({ isOpen: true, type: 'error', title: 'Reset Failed', message: String(e) });
+            toast.error('Reset Failed', String(e));
         }
     };
 
@@ -202,18 +202,46 @@ const Settings = () => {
                                 </div>
                                 <div className="appearance-text">
                                     <h3>App Theme</h3>
-                                    <p>Switch between light and dark modes.</p>
+                                    <p>Choose your preferred theme.</p>
                                 </div>
                             </div>
 
-                            <label className="settings-toggle">
-                                <input
-                                    type="checkbox"
-                                    checked={theme === 'dark'}
-                                    onChange={toggleTheme}
-                                />
-                                <span className="slider"></span>
-                            </label>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                    onClick={() => theme !== 'light' && toggleTheme()}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: '40px',
+                                        height: '40px',
+                                        borderRadius: '10px',
+                                        border: theme === 'light' ? '2px solid #6366f1' : '1px solid var(--border)',
+                                        background: theme === 'light' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                >
+                                    <Sun size={20} style={{ color: theme === 'light' ? '#6366f1' : 'var(--text-muted)' }} />
+                                </button>
+                                <button
+                                    onClick={() => theme !== 'dark' && toggleTheme()}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: '40px',
+                                        height: '40px',
+                                        borderRadius: '10px',
+                                        border: theme === 'dark' ? '2px solid #6366f1' : '1px solid var(--border)',
+                                        background: theme === 'dark' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                >
+                                    <Moon size={20} style={{ color: theme === 'dark' ? '#6366f1' : 'var(--text-muted)' }} />
+                                </button>
+                            </div>
                         </div>
                     </div>
                     
@@ -321,7 +349,7 @@ const Settings = () => {
                             <Code size={18} className="tech-info-icon" />
                             <div>
                                 <p className="tech-info-label">Version</p>
-                                <p className="tech-info-value">1.3.0</p>
+                                <p className="tech-info-value">1.4.0</p>
                             </div>
                         </div>
 
@@ -444,14 +472,6 @@ const Settings = () => {
                     </div>
                 </div>
             </div>
-
-            <AlertModal
-                isOpen={alertConfig.isOpen}
-                onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
-                type={alertConfig.type}
-                title={alertConfig.title}
-                message={alertConfig.message}
-            />
 
             <DeleteConfirmationModal
                 isOpen={isResetModalOpen}

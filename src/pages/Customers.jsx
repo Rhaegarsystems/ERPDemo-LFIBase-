@@ -2,20 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Users } from 'lucide-react';
 import GlassTable from '../components/GlassTable';
 import Modal from '../components/Modal';
-import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
-import AlertModal from '../components/AlertModal';
 import DetailViewModal from '../components/DetailViewModal';
+import { useToast } from '../components/ToastProvider';
+import { useConfirmToast } from '../components/ConfirmToastProvider';
 import '../styles/PageCommon.css';
 import { invoke } from '@tauri-apps/api/core';
 
 const Customers = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [itemToDelete, setItemToDelete] = useState(null);
-    const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'success', title: '', message: '' });
     const [data, setData] = useState([]);
+    const [filteredData, setFilteredData] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState(null);
+    const toast = useToast();
+    const confirmToast = useConfirmToast();
 
     const [newCustomer, setNewCustomer] = useState({
         id: null,
@@ -44,6 +45,22 @@ const Customers = () => {
         fetchCustomers();
     }, []);
 
+    useEffect(() => {
+        if (!searchTerm.trim()) {
+            setFilteredData(data);
+        } else {
+            const term = searchTerm.toLowerCase();
+            setFilteredData(data.filter(item => 
+                (item.name && item.name.toLowerCase().includes(term)) ||
+                (item.vendor_code && item.vendor_code.toLowerCase().includes(term)) ||
+                (item.gstin && item.gstin.toLowerCase().includes(term)) ||
+                (item.state && item.state.toLowerCase().includes(term)) ||
+                (item.phone && item.phone.toLowerCase().includes(term)) ||
+                (item.email && item.email.toLowerCase().includes(term))
+            ));
+        }
+    }, [searchTerm, data]);
+
     const columns = [
         { header: "Customer Name", accessor: "name" },
         { header: "Vendor Code", accessor: "vendor_code" },
@@ -51,18 +68,14 @@ const Customers = () => {
         { header: "State", accessor: "state" },
     ];
 
-    const showAlert = (type, title, message) => {
-        setAlertConfig({ isOpen: true, type, title, message });
-    };
-
     const handleSave = async () => {
         try {
             if (newCustomer.id) {
                 await invoke('update_customer', { customer: newCustomer });
-                showAlert('success', 'Updated', 'Customer details updated.');
+                toast.success('Updated', 'Customer details updated.');
             } else {
                 await invoke('add_customer', { customer: newCustomer });
-                showAlert('success', 'Added', 'New customer added.');
+                toast.success('Added', 'New customer added.');
             }
             setIsModalOpen(false);
             fetchCustomers();
@@ -72,25 +85,27 @@ const Customers = () => {
             });
         } catch (error) {
             console.error("Failed to save customer:", error);
-            showAlert('error', 'Error', "Error saving customer: " + error);
+            toast.error('Error', "Error saving customer: " + error);
         }
     };
 
-    const handleDelete = (item) => {
-        setItemToDelete(item);
-        setIsDeleteModalOpen(true);
-    };
-
-    const confirmDelete = async () => {
-        if (!itemToDelete) return;
-        try {
-            await invoke('delete_customer', { id: itemToDelete.id });
-            fetchCustomers();
-            setIsDeleteModalOpen(false);
-            setItemToDelete(null);
-            showAlert('success', 'Deleted', 'Customer deleted.');
-        } catch (e) {
-            showAlert('error', 'Error', "Delete failed: " + e);
+    const handleDelete = async (item) => {
+        const confirmed = await confirmToast.showConfirm({
+            title: 'Delete Customer',
+            message: `Are you sure you want to delete "${item.name}"?`,
+            confirmText: 'Delete',
+            cancelText: 'Cancel',
+            type: 'danger'
+        });
+        
+        if (confirmed) {
+            try {
+                await invoke('delete_customer', { id: item.id });
+                fetchCustomers();
+                toast.success('Deleted', 'Customer deleted.');
+            } catch (e) {
+                toast.error('Error', "Delete failed: " + e);
+            }
         }
     };
 
@@ -137,20 +152,25 @@ const Customers = () => {
             <div className="controls-bar">
                 <div className="search-box">
                     <Search size={18} />
-                    <input type="text" placeholder="Search customers..." />
+                    <input 
+                        type="text" 
+                        placeholder="Search customers..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
             </div>
 
-            {data.length === 0 ? (
+            {filteredData.length === 0 ? (
                 <div className="empty-state">
                     <Users size={64} style={{ opacity: 0.3, marginBottom: '1rem' }} />
-                    <h3>No Customers Found</h3>
-                    <p>Add your first customer to get started.</p>
+                    <h3>{searchTerm ? 'No Customers Found' : 'No Customers Found'}</h3>
+                    <p>{searchTerm ? 'No customers match your search.' : 'Add your first customer to get started.'}</p>
                 </div>
             ) : (
                 <GlassTable
                     columns={columns}
-                    data={data}
+                    data={filteredData}
                     actions={{ onEdit: handleEdit, onDelete: handleDelete }}
                     onRowClick={handleRowClick}
                 />
@@ -247,21 +267,6 @@ const Customers = () => {
                     </div>
                 </div>
             </Modal>
-
-            <DeleteConfirmationModal
-                isOpen={isDeleteModalOpen}
-                onClose={() => setIsDeleteModalOpen(false)}
-                onConfirm={confirmDelete}
-                itemName={itemToDelete?.name}
-            />
-
-            <AlertModal
-                isOpen={alertConfig.isOpen}
-                onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
-                type={alertConfig.type}
-                title={alertConfig.title}
-                message={alertConfig.message}
-            />
 
             <DetailViewModal
                 isOpen={isDetailModalOpen}

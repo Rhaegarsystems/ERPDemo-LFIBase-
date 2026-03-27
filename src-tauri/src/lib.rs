@@ -1,13 +1,13 @@
 mod db;
 mod backup;
 
-use db::{ActivityLog, Customer, DashboardStats, InventoryItem, Invoice, RevenuePoint};
+use db::{ActivityLog, Customer, DashboardStats, InventoryItem, Invoice, InvoiceWithCustomer, RevenuePoint};
 use backup::BackupState;
 use std::sync::Mutex;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
+    format!("Hello, {}! You've been greeted by Rust!", name)
 }
 
 // --- Backup Commands ---
@@ -44,6 +44,12 @@ fn get_revenue_history(app: tauri::AppHandle) -> Result<Vec<RevenuePoint>, Strin
 fn get_invoice(app: tauri::AppHandle, id: String) -> Result<Invoice, String> {
     let conn = db::open_encrypted_conn(&app)?;
     db::get_invoice(&conn, &id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_invoice_with_customer(app: tauri::AppHandle, id: String) -> Result<InvoiceWithCustomer, String> {
+    let conn = db::open_encrypted_conn(&app)?;
+    db::get_invoice_with_customer(&conn, &id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -204,6 +210,7 @@ pub fn run() {
             reset_database,
             get_revenue_history,
             get_invoice,
+            get_invoice_with_customer,
             get_database_key,
             get_dev_pin
         ])

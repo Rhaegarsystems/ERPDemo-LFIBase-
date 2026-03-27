@@ -78,3 +78,18 @@
 .glass-table tr.clickable-row:active td {
     background: rgba(139, 92, 246, 0.12);
 }
+
+/* Spinning animation for loading */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.spinning {
+    animation: spin 1s linear infinite;
+}
+
+.icon-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { Save, Printer, ArrowLeft, Plus, Trash2, Search } from 'lucide-react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
-import { openPath } from '@tauri-apps/plugin-opener';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { toWords } from 'number-to-words';
-import AlertModal from '../components/AlertModal';
 import PartSelectorModal from '../components/PartSelectorModal';
 import CustomerSelectorModal from '../components/CustomerSelectorModal';
+import { useToast } from '../components/ToastProvider';
 import '../styles/PageCommon.css';
 import lfiLogo from '../assets/Logo.png';
 
@@ -97,10 +97,38 @@ const amountToWords = (amount) => {
     }
 };
 
+// Extract customer details from customer object or use empty defaults
+const extractCustomerDetails = (customer) => {
+    if (!customer) {
+        return {
+            name: '',
+            contact: '',
+            email: '',
+            phone: '',
+            address: '',
+            gstin: '',
+            state: '',
+            state_code: '',
+            pincode: ''
+        };
+    }
+    
+    return {
+        name: customer.name || '',
+        contact: customer.contact || '',
+        email: customer.email || '',
+        phone: customer.phone || '',
+        address: customer.address || '',
+        gstin: customer.gstin || '',
+        state: customer.state || '',
+        state_code: customer.state_code || '',
+        pincode: customer.pincode || ''
+    };
+};
+
 const CreateInvoice = () => {
     const navigate = useNavigate();
     const { id } = useParams();
-    const location = useLocation();
     const invoiceRef = useRef(null);
     const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'success', title: '', message: '' });
     const [pdfProgress, setPdfProgress] = useState({ isGenerating: false, progress: 0, status: '' });
@@ -108,7 +136,6 @@ const CreateInvoice = () => {
     const [customers, setCustomers] = useState([]);
     const [inventory, setInventory] = useState([]);
 
-    // Invoice State with V2 fields
     const [invoice, setInvoice] = useState({
         id: '',
         client_name: '',
@@ -121,7 +148,7 @@ const CreateInvoice = () => {
         po_no: '',
         po_date: '',
         transport_mode: '',
-        invoice_type: '', // 'Sale', 'Service', or 'Sale, Service'
+        invoice_type: '',
         hsn_code: '',
         sac_code: '',
         state: 'Tamilnadu',
@@ -134,9 +161,9 @@ const CreateInvoice = () => {
     const [totals, setTotals] = useState({ subtotal: 0, cgst: 0, sgst: 0, igst: 0, total: 0 });
     const [taxRates, setTaxRates] = useState({ cgst: 9, sgst: 9 });
 
-    // State for Part Selector Modal and New Item Form
     const [isPartModalOpen, setIsPartModalOpen] = useState(false);
     const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+    const toast = useToast();
     const [newItem, setNewItem] = useState({
         part_number: '',
         name: '',
@@ -191,52 +218,6 @@ const CreateInvoice = () => {
         loadData();
     }, [id]);
 
-    // Handle auto-print if query param is present
-    useEffect(() => {
-        const queryParams = new URLSearchParams(location.search);
-        if (queryParams.get('print') === 'true' && invoice.id && invoice.items.length > 0) {
-            // Give a small delay for the UI to render completely
-            const timer = setTimeout(async () => {
-                // First save the invoice to ensure DB is up to date
-                try {
-                    await invoke('save_invoice', {
-                        invoice: {
-                            id: invoice.id,
-                            client_name: invoice.client_name,
-                            vendor_code: invoice.vendor_code,
-                            date: toISODate(invoice.date),
-                            due_date: invoice.due_date,
-                            amount: totals.total,
-                            status: invoice.status,
-                            dc_no: invoice.dc_no,
-                            dc_date: invoice.dc_date,
-                            po_no: invoice.po_no,
-                            po_date: invoice.po_date,
-                            transport_mode: invoice.transport_mode,
-                            invoice_type: invoice.invoice_type,
-                            items_json: JSON.stringify(invoice.items),
-                            hsn_code: invoice.hsn_code,
-                            sac_code: invoice.sac_code,
-                            state: invoice.state,
-                            state_code: invoice.state_code,
-                            pincode: invoice.pincode
-                        }
-                    });
-                    
-                    // Then trigger the PDF generation
-                    await handlePrint();
-                    
-                    // Finally navigate back to invoices list
-                    navigate('/invoices', { replace: true });
-                } catch (e) {
-                    console.error("Auto-print save failed:", e);
-                    showAlert('error', 'Auto-Print Error', 'Failed to save before printing: ' + e);
-                }
-            }, 1000);
-            return () => clearTimeout(timer);
-        }
-    }, [location.search, invoice.id, id, totals.total]);
-
     useEffect(() => {
         const sub = invoice.items.reduce((acc, item) => acc + (item.amount || 0), 0);
         let c_tax = 0, s_tax = 0, i_tax = 0;
@@ -250,8 +231,6 @@ const CreateInvoice = () => {
         }
         setTotals({ subtotal: sub, cgst: c_tax, sgst: s_tax, igst: i_tax, total: sub + c_tax + s_tax + i_tax });
     }, [invoice.items, invoice.state_code, taxRates]);
-
-    const showAlert = (type, title, message) => setAlertConfig({ isOpen: true, type, title, message });
 
     const handleCustomerSelect = (customer) => {
         setInvoice(prev => ({
@@ -343,10 +322,10 @@ const CreateInvoice = () => {
                     pincode: invoice.pincode
                 }
             });
-            showAlert('success', 'Invoice Saved', 'Invoice saved successfully.');
+            toast.success('Invoice Saved', 'Invoice saved successfully.');
             setTimeout(() => navigate('/invoices'), 1500);
         } catch (e) {
-            showAlert('error', 'Save Failed', String(e));
+            toast.error('Save Failed', String(e));
         }
     };
 
@@ -428,24 +407,14 @@ const CreateInvoice = () => {
                 setPdfProgress({ isGenerating: true, progress: 95, status: 'Saving to disk...' });
                 await writeFile(filePath, new Uint8Array(pdfData));
                 setPdfProgress({ isGenerating: false, progress: 100, status: '' });
-                
-                // Add a small delay to ensure OS has finished writing and file is ready to be opened
-                await new Promise(r => setTimeout(r, 500));
-                
-                try {
-                    // Automatically open the PDF
-                    await openPath(filePath);
-                } catch (openErr) {
-                    console.error('Failed to open PDF:', openErr);
-                }
-                
-                showAlert('success', 'PDF Saved', `Saved to ${filePath}`);
+                toast.success('PDF Saved', `Saved to ${filePath}`);
             } else {
                 setPdfProgress({ isGenerating: false, progress: 0, status: '' });
+                toast.warning('PDF Not Saved', 'Operation cancelled by user.');
             }
         } catch (e) {
             setPdfProgress({ isGenerating: false, progress: 0, status: '' });
-            showAlert('error', 'PDF Error', String(e));
+            toast.error('PDF Error', String(e));
         }
     };
 
@@ -623,6 +592,7 @@ const CreateInvoice = () => {
                                     borderRadius: 'var(--radius-md)',
                                     cursor: 'pointer',
                                     color: newItem.part_number ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                    transition: 'border-color 0.2s',
                                     minHeight: '38px'
                                 }}
                             >
@@ -719,7 +689,7 @@ const CreateInvoice = () => {
                                 </thead>
                                 <tbody>
                                     {invoice.items.map((item, i) => (
-                                        <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                                        <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                             <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{i + 1}</td>
                                             <td style={{ padding: '0.75rem', color: 'var(--primary)', fontWeight: 500 }}>{item.part_number || '-'}</td>
                                             <td style={{ padding: '0.75rem', color: 'var(--text-primary)' }}>{item.name || '-'}</td>
@@ -739,7 +709,8 @@ const CreateInvoice = () => {
                                                         color: 'var(--danger)',
                                                         display: 'inline-flex',
                                                         alignItems: 'center',
-                                                        justifyContent: 'center'
+                                                        justifyContent: 'center',
+                                                        transition: 'all 0.2s'
                                                     }}
                                                     title={`Delete ${item.name || 'Item'}`}
                                                 >
@@ -920,14 +891,6 @@ const CreateInvoice = () => {
                 @media print { .no-print { display: none; } .page-container { padding: 0; margin: 0; background: white; } .invoice-paper { border: none; margin: 0; } }
             `}</style>
 
-                <AlertModal
-                    isOpen={alertConfig.isOpen}
-                    onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
-                    type={alertConfig.type}
-                    title={alertConfig.title}
-                    message={alertConfig.message}
-                />
-
                 <PartSelectorModal
                     isOpen={isPartModalOpen}
                     onClose={() => setIsPartModalOpen(false)}
@@ -942,60 +905,50 @@ const CreateInvoice = () => {
                     onSelect={handleCustomerSelect}
                 />
 
-                {/* PDF Progress Modal */}
+                {/* PDF Progress Toast */}
                 {pdfProgress.isGenerating && (
-                    <div style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        background: 'rgba(0, 0, 0, 0.7)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 9999
-                    }}>
-                        <div
-                            style={{
-                                background: 'var(--bg-secondary)',
-                                borderRadius: 'var(--radius-lg)',
-                                padding: '2rem',
-                                minWidth: '320px',
-                                textAlign: 'center',
-                                border: '1px solid var(--border)'
-                            }}
-                        >
-                            <div style={{ marginBottom: '1rem' }}>
-                                <Printer size={40} style={{ color: 'var(--primary)', marginBottom: '0.5rem' }} />
-                                <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>Generating PDF</h3>
-                                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                    {pdfProgress.status}
-                                </p>
-                            </div>
-
-                            <div style={{
-                                background: 'var(--bg-tertiary)',
-                                borderRadius: '10px',
-                                height: '12px',
-                                overflow: 'hidden',
-                                marginBottom: '0.75rem'
-                            }}>
-                                <div
-                                    style={{
-                                        width: `${pdfProgress.progress}%`,
-                                        height: '100%',
-                                        background: 'linear-gradient(90deg, #8b5cf6, #6366f1)',
-                                        borderRadius: '10px'
-                                    }}
-                                />
-                            </div>
-
-                            <p style={{ margin: 0, fontWeight: 600, color: 'var(--primary)', fontSize: '1.1rem' }}>
-                                {pdfProgress.progress}%
-                            </p>
+                    <motion.div
+                        initial={{ opacity: 0, x: 100 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        style={{
+                            position: 'fixed',
+                            bottom: '24px',
+                            right: '24px',
+                            background: 'rgba(30, 30, 40, 0.95)',
+                            borderRadius: '8px',
+                            padding: '16px 20px',
+                            minWidth: '280px',
+                            zIndex: 9999,
+                            border: '1px solid var(--border)',
+                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+                            <Printer size={20} style={{ color: '#8b5cf6' }} />
+                            <span style={{ color: '#fff', fontWeight: 600 }}>Generating PDF</span>
+                            <span style={{ color: '#8b5cf6', fontWeight: 600, marginLeft: 'auto' }}>{pdfProgress.progress}%</span>
                         </div>
-                    </div>
+                        <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '8px' }}>
+                            {pdfProgress.status}
+                        </p>
+                        <div style={{
+                            background: 'var(--bg-tertiary)',
+                            borderRadius: '4px',
+                            height: '6px',
+                            overflow: 'hidden'
+                        }}>
+                            <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${pdfProgress.progress}%` }}
+                                transition={{ duration: 0.15 }}
+                                style={{
+                                    height: '100%',
+                                    background: 'linear-gradient(90deg, #8b5cf6, #6366f1)',
+                                    borderRadius: '4px'
+                                }}
+                            />
+                        </div>
+                    </motion.div>
                 )}
             </div>
         </div >

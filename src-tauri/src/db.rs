@@ -568,6 +568,12 @@ pub struct Invoice {
     pub pincode: Option<String>,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+pub struct InvoiceWithCustomer {
+    pub invoice: Invoice,
+    pub customer: Option<Customer>,
+}
+
 pub fn get_invoices(conn: &Connection) -> Result<Vec<Invoice>> {
     let mut stmt = conn.prepare("SELECT id, client_name, vendor_code, date, due_date, amount, status, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, items_json, hsn_code, sac_code, state, state_code, pincode FROM invoices")?;
     let iter = stmt.query_map([], |row| {
@@ -641,6 +647,33 @@ pub fn get_invoice(conn: &Connection, id: &str) -> Result<Invoice> {
         })
     })?;
     Ok(invoice)
+}
+
+pub fn get_invoice_with_customer(conn: &Connection, id: &str) -> Result<InvoiceWithCustomer> {
+    let invoice = get_invoice(conn, id)?;
+
+    let mut stmt = conn.prepare("SELECT id, name, contact, email, phone, address, gstin, state, state_code, vendor_code, pincode FROM customers WHERE name = ?1")?;
+    let customer: Option<Customer> = stmt
+        .query_row([&invoice.client_name], |row| {
+            Ok(Customer {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                contact: row.get(2).unwrap_or(None),
+                email: row.get(3).unwrap_or(None),
+                phone: row.get(4).unwrap_or(None),
+                address: row.get(5).unwrap_or(None),
+                gstin: row.get(6).unwrap_or(None),
+                state: row.get(7).unwrap_or(None),
+                state_code: row.get(8).unwrap_or(None),
+                vendor_code: row.get(9).unwrap_or(None),
+                pincode: row.get(10).unwrap_or(None),
+                orders: None,
+                total_value: None,
+            })
+        })
+        .ok();
+
+    Ok(InvoiceWithCustomer { invoice, customer })
 }
 
 pub fn get_latest_invoice_id(conn: &Connection) -> Result<Option<String>> {

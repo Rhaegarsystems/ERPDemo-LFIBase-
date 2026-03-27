@@ -3,9 +3,9 @@ import { Plus, Search, Filter, Package } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import GlassTable from '../components/GlassTable';
 import Modal from '../components/Modal';
-import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
-import AlertModal from '../components/AlertModal';
 import DetailViewModal from '../components/DetailViewModal';
+import { useToast } from '../components/ToastProvider';
+import { useConfirmToast } from '../components/ConfirmToastProvider';
 import '../styles/PageCommon.css';
 
 const formatDateInput = (value) => {
@@ -27,13 +27,12 @@ const formatDateInput = (value) => {
 
 const Inventory = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState(null);
-  const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'success', title: '', message: '' });
   const [items, setItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredItems, setFilteredItems] = useState([]);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const toast = useToast();
+  const confirmToast = useConfirmToast();
   const [selectedItem, setSelectedItem] = useState(null);
 
   const [newItem, setNewItem] = useState({
@@ -85,10 +84,6 @@ const Inventory = () => {
     { header: "Unit Price", accessor: "price", render: (val) => `₹${(typeof val === 'number' ? val : 0).toFixed(2)}` },
   ];
 
-  const showAlert = (type, title, message) => {
-    setAlertConfig({ isOpen: true, type, title, message });
-  };
-
   const handleSave = async () => {
     try {
       const itemToSave = {
@@ -98,35 +93,37 @@ const Inventory = () => {
       };
       if (newItem.id) {
         await invoke('update_item', { item: itemToSave });
-        showAlert('success', 'Updated!', `${newItem.name} has been updated.`);
+        toast.success('Updated!', `${newItem.name} has been updated.`);
       } else {
         await invoke('add_item', { item: itemToSave });
-        showAlert('success', 'Added!', `${newItem.name} added to inventory.`);
+        toast.success('Added!', `${newItem.name} added to inventory.`);
       }
       setIsModalOpen(false);
       fetchInventory();
       setNewItem({ id: null, name: '', part_number: '', price: '', process: '', po_no: '', po_date: '' });
     } catch (error) {
       console.error("Failed to save item:", error);
-      showAlert('error', 'Error', `Failed to save: ${error}`);
+      toast.error('Error', `Failed to save: ${error}`);
     }
   };
 
-  const handleDelete = (item) => {
-    setItemToDelete(item);
-    setIsDeleteModalOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!itemToDelete) return;
-    try {
-      await invoke('delete_item', { id: itemToDelete.id });
-      fetchInventory();
-      setIsDeleteModalOpen(false);
-      setItemToDelete(null);
-      showAlert('success', 'Deleted', 'Item removed.');
-    } catch (e) {
-      showAlert('error', 'Error', `Delete failed: ${e}`);
+  const handleDelete = async (item) => {
+    const confirmed = await confirmToast.showConfirm({
+      title: 'Delete Item',
+      message: `Are you sure you want to delete "${item.name}"?`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger'
+    });
+    
+    if (confirmed) {
+      try {
+        await invoke('delete_item', { id: item.id });
+        fetchInventory();
+        toast.success('Deleted', 'Item removed.');
+      } catch (e) {
+        toast.error('Error', `Delete failed: ${e}`);
+      }
     }
   };
 
@@ -275,21 +272,6 @@ const Inventory = () => {
           </div>
         </div>
       </Modal>
-
-      <DeleteConfirmationModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={confirmDelete}
-        itemName={itemToDelete?.name}
-      />
-
-      <AlertModal
-        isOpen={alertConfig.isOpen}
-        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
-        type={alertConfig.type}
-        title={alertConfig.title}
-        message={alertConfig.message}
-      />
 
       <DetailViewModal
         isOpen={isDetailModalOpen}

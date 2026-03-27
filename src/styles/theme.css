@@ -47,10 +47,6 @@
     --danger: #dc2626;
     /* Red 600 */
 
-    /* Glows -> Shadows for Light Mode */
-    --glow-primary: 0 4px 12px rgba(99, 102, 241, 0.25);
-    --glow-accent: 0 4px 12px rgba(236, 72, 153, 0.25);
-
     --gradient-title: linear-gradient(to right, var(--text-primary), var(--primary));
 
     /* Spacing */
@@ -67,8 +63,8 @@
     --radius-xl: 1.5rem;
     --radius-full: 9999px;
     /* Transitions */
-    --transition-fast: 150ms ease-out;
-    --transition-standard: 250ms ease-out;
+    --transition-fast: 80ms ease-out;
+    --transition-standard: 150ms ease-out;
 }
 
 [data-theme='dark'] {
@@ -116,14 +112,10 @@
     --danger: #ef4444;
     /* Red 500 */
 
-    /* Shadows instead of Glows */
-    --glow-primary: 0 4px 12px rgba(0, 0, 0, 0.3);
-    --glow-accent: 0 4px 12px rgba(0, 0, 0, 0.3);
-
     --gradient-title: linear-gradient(to right, #ffffff, var(--primary));
     /* Transitions */
-    --transition-fast: 150ms ease-out;
-    --transition-standard: 250ms ease-out;
+    --transition-fast: 80ms ease-out;
+    --transition-standard: 150ms ease-out;
 }
 
 body {
