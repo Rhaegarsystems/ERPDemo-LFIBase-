@@ -3,28 +3,35 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-    // Default to light, but checking localStorage could be good. 
-    // User requested "new page settings... put a dark mode and light mode toggle", implying starting fresh or explicit control.
-    // I'll default to 'light' as per previous task, but load from storage.
     const [theme, setTheme] = useState(() => {
         const savedTheme = localStorage.getItem('app-theme');
         return savedTheme || 'light';
     });
 
+    const [variant, setVariant] = useState(() => {
+        const savedVariant = localStorage.getItem('app-theme-variant');
+        return savedVariant || 'default';
+    });
+
     useEffect(() => {
         const root = window.document.documentElement;
-        // Remove previous theme class/attribute
         root.classList.remove('light', 'dark');
         root.setAttribute('data-theme', theme);
+        root.setAttribute('data-variant', variant);
         localStorage.setItem('app-theme', theme);
-    }, [theme]);
+        localStorage.setItem('app-theme-variant', variant);
+    }, [theme, variant]);
 
     const toggleTheme = () => {
         setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
     };
 
+    const changeVariant = (newVariant) => {
+        setVariant(newVariant);
+    };
+
     return (
-        <ThemeContext.Provider value={{ theme, toggleTheme }}>
+        <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, variant, changeVariant }}>
             {children}
         </ThemeContext.Provider>
     );

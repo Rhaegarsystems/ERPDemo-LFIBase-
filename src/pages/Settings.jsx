@@ -10,7 +10,7 @@ import '../styles/PageCommon.css';
 import '../styles/Settings.css';
 
 const Settings = () => {
-    const { theme, toggleTheme } = useTheme();
+    const { theme, setTheme, toggleTheme, variant, changeVariant } = useTheme();
     const toast = useToast();
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
@@ -29,7 +29,6 @@ const Settings = () => {
             const info = await invoke('get_latest_backup_info');
             setLatestBackup(info);
         } catch (e) {
-            console.log("No backup info found.");
             setLatestBackup(null);
         }
     };
@@ -208,7 +207,7 @@ const Settings = () => {
 
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <button
-                                    onClick={() => theme !== 'light' && toggleTheme()}
+                                    onClick={() => theme !== 'light' && setTheme('light')}
                                     style={{
                                         display: 'flex',
                                         alignItems: 'center',
@@ -225,7 +224,7 @@ const Settings = () => {
                                     <Sun size={20} style={{ color: theme === 'light' ? '#6366f1' : 'var(--text-muted)' }} />
                                 </button>
                                 <button
-                                    onClick={() => theme !== 'dark' && toggleTheme()}
+                                    onClick={() => theme !== 'dark' && setTheme('dark')}
                                     style={{
                                         display: 'flex',
                                         alignItems: 'center',
@@ -247,6 +246,63 @@ const Settings = () => {
                     
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 'auto' }}>
                         Visual preferences are saved locally and persist across sessions.
+                    </p>
+                </div>
+
+                {/* Theme Presets Card */}
+                <div className="settings-card">
+                    <div className="settings-card-header">
+                        <div className="settings-card-icon" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+                            <RefreshCw size={20} />
+                        </div>
+                        <h2 className="settings-card-title">Theme Presets</h2>
+                    </div>
+
+                    <div className="settings-section">
+                        <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-primary)' }}>
+                            {theme === 'light' ? 'Light Mode Presets' : 'Dark Mode Presets'}
+                        </h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '10px' }}>
+                            {(theme === 'light' 
+                                ? [
+                                    { id: 'default', label: 'Default', color: '#6366f1' },
+                                    { id: 'blue', label: 'Sky Blue', color: '#0ea5e9' },
+                                    { id: 'emerald', label: 'Emerald', color: '#10b981' },
+                                    { id: 'rose', label: 'Rose Pink', color: '#f43f5e' },
+                                    { id: 'amber', label: 'Amber Gold', color: '#f59e0b' },
+                                  ]
+                                : [
+                                    { id: 'default', label: 'Slate', color: '#818cf8' },
+                                    { id: 'midnight', label: 'Midnight', color: '#c084fc' },
+                                    { id: 'oled', label: 'OLED Black', color: '#38bdf8' },
+                                    { id: 'ocean', label: 'Ocean', color: '#0ea5e9' },
+                                    { id: 'forest', label: 'Forest', color: '#10b981' },
+                                  ]
+                            ).map((v) => (
+                                <button
+                                    key={v.id}
+                                    onClick={() => changeVariant(v.id)}
+                                    style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        padding: '10px',
+                                        borderRadius: '12px',
+                                        border: variant === v.id ? '2px solid var(--primary)' : '1px solid var(--border)',
+                                        background: variant === v.id ? 'rgba(99, 102, 241, 0.1)' : 'var(--bg-secondary)',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: v.color, border: '1px solid rgba(255,255,255,0.1)' }} />
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 500, color: variant === v.id ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{v.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 'auto' }}>
+                        Customize the primary color and feel of your chosen theme.
                     </p>
                 </div>
 
@@ -349,7 +405,7 @@ const Settings = () => {
                             <Code size={18} className="tech-info-icon" />
                             <div>
                                 <p className="tech-info-label">Version</p>
-                                <p className="tech-info-value">1.4.0</p>
+                                <p className="tech-info-value">1.5.0</p>
                             </div>
                         </div>
 

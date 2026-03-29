@@ -86,10 +86,15 @@ const Inventory = () => {
 
   const handleSave = async () => {
     try {
+      const partNum = newItem.part_number === undefined ? '' : String(newItem.part_number).trim();
       const itemToSave = {
-        ...newItem,
-        part_number: newItem.part_number || null,
-        price: parseFloat(newItem.price) || 0.0
+        id: newItem.id,
+        name: newItem.name,
+        part_number: partNum === '' ? null : partNum,
+        price: parseFloat(newItem.price) || 0.0,
+        process: newItem.process || '',
+        po_no: newItem.po_no || null,
+        po_date: newItem.po_date || null
       };
       if (newItem.id) {
         await invoke('update_item', { item: itemToSave });
@@ -103,7 +108,12 @@ const Inventory = () => {
       setNewItem({ id: null, name: '', part_number: '', price: '', process: '', po_no: '', po_date: '' });
     } catch (error) {
       console.error("Failed to save item:", error);
-      toast.error('Error', `Failed to save: ${error}`);
+      const errorStr = String(error);
+      if (errorStr.toLowerCase().includes('unique') || errorStr.includes('UNIQUE constraint') || errorStr.includes('InvalidQuery')) {
+        toast.error('Duplicate Part Number', 'This part number already exists. Please use a different part number.');
+      } else {
+        toast.error('Error', `Failed to save: ${error}`);
+      }
     }
   };
 

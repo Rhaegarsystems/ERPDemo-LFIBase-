@@ -76,7 +76,7 @@ pub fn ensure_tables(conn: &Connection) -> Result<(), String> {
         "CREATE TABLE IF NOT EXISTS inventory (
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
-            part_number TEXT UNIQUE,
+            part_number TEXT,
             sku TEXT,
             price REAL DEFAULT 0.0,
             process TEXT
@@ -242,8 +242,6 @@ pub fn open_encrypted_conn(app_handle: &AppHandle) -> Result<Connection, String>
             Ok(conn)
         }
         Err(e) => {
-            // If it fails (e.g. wrong key, or file is not encrypted), return error
-            // DO NOT DELETE the file automatically as it might be a mismatch after restore
             Err(format!(
                 "Failed to decrypt database. The key might be incorrect or the database is corrupted. Error: {}", 
                 e
@@ -384,18 +382,28 @@ pub struct InventoryItem {
     pub po_date: Option<String>,
 }
 
+// Helper to get string even if stored as number in SQLite
+fn row_get_string(row: &rusqlite::Row, index: usize) -> Option<String> {
+    match row.get::<_, rusqlite::types::Value>(index) {
+        Ok(rusqlite::types::Value::Text(s)) => Some(s),
+        Ok(rusqlite::types::Value::Integer(i)) => Some(i.to_string()),
+        Ok(rusqlite::types::Value::Real(f)) => Some(f.to_string()),
+        _ => None,
+    }
+}
+
 pub fn get_inventory(conn: &Connection) -> Result<Vec<InventoryItem>> {
     let mut stmt = conn
         .prepare("SELECT id, name, part_number, price, process, po_no, po_date FROM inventory")?;
     let item_iter = stmt.query_map([], |row| {
         Ok(InventoryItem {
             id: row.get(0).ok(),
-            name: row.get(1).unwrap_or_else(|_| "Unknown".to_string()),
-            part_number: row.get(2).ok(),
+            name: row_get_string(row, 1).unwrap_or_else(|| "Unknown".to_string()),
+            part_number: row_get_string(row, 2),
             price: row.get(3).unwrap_or(0.0),
-            process: row.get(4).unwrap_or_default(),
-            po_no: row.get(5).unwrap_or_default(),
-            po_date: row.get(6).unwrap_or_default(),
+            process: row_get_string(row, 4).unwrap_or_default(),
+            po_no: row_get_string(row, 5),
+            po_date: row_get_string(row, 6),
         })
     })?;
     let mut items = Vec::new();
@@ -419,6 +427,7 @@ pub fn add_item(conn: &Connection, item: &InventoryItem) -> Result<()> {
             &item.po_date,
         ),
     )?;
+
     log_activity(
         conn,
         "Created",
@@ -481,16 +490,16 @@ pub fn get_customers(conn: &Connection) -> Result<Vec<Customer>> {
     let iter = stmt.query_map([], |row| {
         Ok(Customer {
             id: row.get(0)?,
-            name: row.get(1)?,
-            contact: row.get(2).unwrap_or(None),
-            email: row.get(3).unwrap_or(None),
-            phone: row.get(4).unwrap_or(None),
-            address: row.get(5).unwrap_or(None),
-            gstin: row.get(6).unwrap_or(None),
-            state: row.get(7).unwrap_or(None),
-            state_code: row.get(8).unwrap_or(None),
-            vendor_code: row.get(9).unwrap_or(None),
-            pincode: row.get(10).unwrap_or(None),
+            name: row_get_string(row, 1).unwrap_or_else(|| "Unknown".to_string()),
+            contact: row_get_string(row, 2),
+            email: row_get_string(row, 3),
+            phone: row_get_string(row, 4),
+            address: row_get_string(row, 5),
+            gstin: row_get_string(row, 6),
+            state: row_get_string(row, 7),
+            state_code: row_get_string(row, 8),
+            vendor_code: row_get_string(row, 9),
+            pincode: row_get_string(row, 10),
             orders: row.get(11).unwrap_or(Some(0)),
             total_value: row.get(12).unwrap_or(Some(0.0)),
         })
@@ -578,25 +587,25 @@ pub fn get_invoices(conn: &Connection) -> Result<Vec<Invoice>> {
     let mut stmt = conn.prepare("SELECT id, client_name, vendor_code, date, due_date, amount, status, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, items_json, hsn_code, sac_code, state, state_code, pincode FROM invoices")?;
     let iter = stmt.query_map([], |row| {
         Ok(Invoice {
-            id: row.get(0)?,
-            client_name: row.get(1)?,
-            vendor_code: row.get(2).unwrap_or(None),
-            date: row.get(3)?,
-            due_date: row.get(4)?,
-            amount: row.get(5)?,
-            status: row.get(6)?,
-            dc_no: row.get(7).unwrap_or(None),
-            dc_date: row.get(8).unwrap_or(None),
-            po_no: row.get(9).unwrap_or(None),
-            po_date: row.get(10).unwrap_or(None),
-            transport_mode: row.get(11).unwrap_or(None),
-            invoice_type: row.get(12).unwrap_or(None),
-            items_json: row.get(13)?,
-            hsn_code: row.get(14).unwrap_or(None),
-            sac_code: row.get(15).unwrap_or(None),
-            state: row.get(16).unwrap_or(None),
-            state_code: row.get(17).unwrap_or(None),
-            pincode: row.get(18).unwrap_or(None),
+            id: row_get_string(row, 0).unwrap_or_default(),
+            client_name: row_get_string(row, 1).unwrap_or_else(|| "Unknown".to_string()),
+            vendor_code: row_get_string(row, 2),
+            date: row_get_string(row, 3).unwrap_or_default(),
+            due_date: row_get_string(row, 4).unwrap_or_default(),
+            amount: row.get(5).unwrap_or(0.0),
+            status: row_get_string(row, 6).unwrap_or_else(|| "Pending".to_string()),
+            dc_no: row_get_string(row, 7),
+            dc_date: row_get_string(row, 8),
+            po_no: row_get_string(row, 9),
+            po_date: row_get_string(row, 10),
+            transport_mode: row_get_string(row, 11),
+            invoice_type: row_get_string(row, 12),
+            items_json: row_get_string(row, 13).unwrap_or_else(|| "[]".to_string()),
+            hsn_code: row_get_string(row, 14),
+            sac_code: row_get_string(row, 15),
+            state: row_get_string(row, 16),
+            state_code: row_get_string(row, 17),
+            pincode: row_get_string(row, 18),
         })
     })?;
     let mut invoices = Vec::new();
@@ -625,25 +634,25 @@ pub fn get_invoice(conn: &Connection, id: &str) -> Result<Invoice> {
     let mut stmt = conn.prepare("SELECT id, client_name, vendor_code, date, amount, status, items_json, due_date, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, hsn_code, sac_code, state, state_code, pincode FROM invoices WHERE id = ?1")?;
     let invoice = stmt.query_row([id], |row| {
         Ok(Invoice {
-            id: row.get(0)?,
-            client_name: row.get(1)?,
-            vendor_code: row.get(2).unwrap_or(None),
-            date: row.get(3)?,
-            amount: row.get(4)?,
-            status: row.get(5)?,
-            items_json: row.get(6)?,
-            due_date: row.get(7).unwrap_or_default(),
-            dc_no: row.get(8).unwrap_or_default(),
-            dc_date: row.get(9).unwrap_or_default(),
-            po_no: row.get(10).unwrap_or_default(),
-            po_date: row.get(11).unwrap_or_default(),
-            transport_mode: row.get(12).unwrap_or_default(),
-            invoice_type: row.get(13).unwrap_or_default(),
-            hsn_code: row.get(14).unwrap_or_default(),
-            sac_code: row.get(15).unwrap_or_default(),
-            state: row.get(16).unwrap_or_default(),
-            state_code: row.get(17).unwrap_or_default(),
-            pincode: row.get(18).unwrap_or_default(),
+            id: row_get_string(row, 0).unwrap_or_default(),
+            client_name: row_get_string(row, 1).unwrap_or_else(|| "Unknown".to_string()),
+            vendor_code: row_get_string(row, 2),
+            date: row_get_string(row, 3).unwrap_or_default(),
+            amount: row.get(4).unwrap_or(0.0),
+            status: row_get_string(row, 5).unwrap_or_else(|| "Pending".to_string()),
+            items_json: row_get_string(row, 6).unwrap_or_else(|| "[]".to_string()),
+            due_date: row_get_string(row, 7).unwrap_or_default(),
+            dc_no: row_get_string(row, 8),
+            dc_date: row_get_string(row, 9),
+            po_no: row_get_string(row, 10),
+            po_date: row_get_string(row, 11),
+            transport_mode: row_get_string(row, 12),
+            invoice_type: row_get_string(row, 13),
+            hsn_code: row_get_string(row, 14),
+            sac_code: row_get_string(row, 15),
+            state: row_get_string(row, 16),
+            state_code: row_get_string(row, 17),
+            pincode: row_get_string(row, 18),
         })
     })?;
     Ok(invoice)
@@ -656,17 +665,17 @@ pub fn get_invoice_with_customer(conn: &Connection, id: &str) -> Result<InvoiceW
     let customer: Option<Customer> = stmt
         .query_row([&invoice.client_name], |row| {
             Ok(Customer {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                contact: row.get(2).unwrap_or(None),
-                email: row.get(3).unwrap_or(None),
-                phone: row.get(4).unwrap_or(None),
-                address: row.get(5).unwrap_or(None),
-                gstin: row.get(6).unwrap_or(None),
-                state: row.get(7).unwrap_or(None),
-                state_code: row.get(8).unwrap_or(None),
-                vendor_code: row.get(9).unwrap_or(None),
-                pincode: row.get(10).unwrap_or(None),
+                id: row.get(0).ok(),
+                name: row_get_string(row, 1).unwrap_or_else(|| "Unknown".to_string()),
+                contact: row_get_string(row, 2),
+                email: row_get_string(row, 3),
+                phone: row_get_string(row, 4),
+                address: row_get_string(row, 5),
+                gstin: row_get_string(row, 6),
+                state: row_get_string(row, 7),
+                state_code: row_get_string(row, 8),
+                vendor_code: row_get_string(row, 9),
+                pincode: row_get_string(row, 10),
                 orders: None,
                 total_value: None,
             })

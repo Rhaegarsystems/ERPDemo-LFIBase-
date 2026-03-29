@@ -10,18 +10,31 @@ use std::env;
 // --- Cloud Configuration ---
 
 fn get_cloud_config() -> Result<(String, String, String, String)> {
-    // Try both .env and .env.local
+    // In production, these should be baked in at compile time
+    // In dev, they are picked up from the environment or .env
+    
+    // Check if we have compile-time variables (baked in during cargo build)
+    let access_key = option_env!("AWS_ACCESS_KEY_ID");
+    let secret_key = option_env!("AWS_SECRET_ACCESS_KEY");
+    let region = option_env!("AWS_REGION");
+    let bucket = option_env!("AWS_S3_BUCKET");
+
+    if let (Some(ak), Some(sk), Some(reg), Some(buck)) = (access_key, secret_key, region, bucket) {
+        return Ok((ak.to_string(), sk.to_string(), reg.to_string(), buck.to_string()));
+    }
+
+    // Fallback to runtime environment (for development)
     dotenvy::dotenv().ok();
     dotenvy::from_filename(".env.local").ok();
     
     let access_key = env::var("AWS_ACCESS_KEY_ID")
-        .map_err(|_| anyhow!("Cloud Access Key not found in .env or .env.local"))?;
+        .map_err(|_| anyhow!("Cloud Access Key not found. Please set AWS_ACCESS_KEY_ID at compile time or in .env"))?;
     let secret_key = env::var("AWS_SECRET_ACCESS_KEY")
-        .map_err(|_| anyhow!("Cloud Secret Key not found in .env or .env.local"))?;
+        .map_err(|_| anyhow!("Cloud Secret Key not found. Please set AWS_SECRET_ACCESS_KEY at compile time or in .env"))?;
     let region = env::var("AWS_REGION")
-        .map_err(|_| anyhow!("Cloud Region not found in .env or .env.local"))?;
+        .map_err(|_| anyhow!("Cloud Region not found. Please set AWS_REGION at compile time or in .env"))?;
     let bucket = env::var("AWS_S3_BUCKET")
-        .map_err(|_| anyhow!("Cloud Storage Identifier not found in .env or .env.local"))?;
+        .map_err(|_| anyhow!("Cloud Storage Identifier not found. Please set AWS_S3_BUCKET at compile time or in .env"))?;
     Ok((access_key, secret_key, region, bucket))
 }
 

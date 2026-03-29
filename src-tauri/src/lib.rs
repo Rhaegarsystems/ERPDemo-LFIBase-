@@ -178,10 +178,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .manage(BackupState { _last_backup_check: Mutex::new(None) })
         .setup(|app| {
-            match db::init_db(app.handle()) {
-                Ok(_) => println!("Database initialized successfully"),
-                Err(e) => eprintln!("Failed to initialize database: {}", e),
-            }
+            let _ = db::init_db(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
