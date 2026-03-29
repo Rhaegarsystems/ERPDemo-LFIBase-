@@ -13,6 +13,11 @@ export const ThemeProvider = ({ children }) => {
         return savedVariant || 'default';
     });
 
+    const [autoOpenPdf, setAutoOpenPdf] = useState(() => {
+        const saved = localStorage.getItem('app-auto-open-pdf');
+        return saved !== null ? JSON.parse(saved) : true;
+    });
+
     useEffect(() => {
         const root = window.document.documentElement;
         root.classList.remove('light', 'dark');
@@ -22,6 +27,10 @@ export const ThemeProvider = ({ children }) => {
         localStorage.setItem('app-theme-variant', variant);
     }, [theme, variant]);
 
+    useEffect(() => {
+        localStorage.setItem('app-auto-open-pdf', JSON.stringify(autoOpenPdf));
+    }, [autoOpenPdf]);
+
     const toggleTheme = () => {
         setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
     };
@@ -30,8 +39,16 @@ export const ThemeProvider = ({ children }) => {
         setVariant(newVariant);
     };
 
+    const toggleAutoOpenPdf = () => {
+        setAutoOpenPdf(prev => !prev);
+    };
+
     return (
-        <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, variant, changeVariant }}>
+        <ThemeContext.Provider value={{ 
+            theme, setTheme, toggleTheme, 
+            variant, changeVariant, 
+            autoOpenPdf, toggleAutoOpenPdf 
+        }}>
             {children}
         </ThemeContext.Provider>
     );

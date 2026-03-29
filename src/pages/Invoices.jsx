@@ -12,10 +12,12 @@ import InvoiceStatusModal from '../components/InvoiceStatusModal';
 import InvoiceTemplate from '../components/InvoiceTemplate';
 import { useToast } from '../components/ToastProvider';
 import { useConfirmToast } from '../components/ConfirmToastProvider';
+import { useTheme } from '../context/ThemeContext';
 import '../styles/PageCommon.css';
 
 const Invoices = () => {
     const navigate = useNavigate();
+    const { autoOpenPdf } = useTheme();
     const [data, setData] = useState([]);
     const [filteredData, setFilteredData] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -211,6 +213,15 @@ const Invoices = () => {
                         }
                     }
                 });
+                
+                // Stable Auto-Open using backend command (only if enabled)
+                if (autoOpenPdf) {
+                    try {
+                        await invoke('open_file', { path: filePath });
+                    } catch (e) {
+                        console.error("Failed to auto-open PDF:", e);
+                    }
+                }
             } else {
                 toast.warning('PDF Not Saved', 'Operation cancelled.');
             }

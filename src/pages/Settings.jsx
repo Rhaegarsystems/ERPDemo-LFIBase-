@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { Moon, Sun, Monitor, Info, Code, Calendar, Shield, Database, Download, Upload, Cloud, RefreshCw, Terminal, Copy, Archive } from 'lucide-react';
+import { Moon, Sun, Monitor, Info, Code, Calendar, Shield, Database, Download, Upload, Cloud, RefreshCw, Terminal, Copy, Archive, FileText } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { save, open } from '@tauri-apps/plugin-dialog';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
@@ -10,7 +10,7 @@ import '../styles/PageCommon.css';
 import '../styles/Settings.css';
 
 const Settings = () => {
-    const { theme, setTheme, toggleTheme, variant, changeVariant } = useTheme();
+    const { theme, setTheme, toggleTheme, variant, changeVariant, autoOpenPdf, toggleAutoOpenPdf } = useTheme();
     const toast = useToast();
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
@@ -181,72 +181,137 @@ const Settings = () => {
             </header>
 
             <div className="settings-container">
-                {/* Appearance Card */}
-                <div className="settings-card">
-                    <div className="settings-card-header">
-                        <div className="settings-card-icon">
-                            <Monitor size={20} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                    {/* Appearance Card */}
+                    <div className="settings-card">
+                        <div className="settings-card-header">
+                            <div className="settings-card-icon">
+                                <Monitor size={20} />
+                            </div>
+                            <h2 className="settings-card-title">Appearance</h2>
                         </div>
-                        <h2 className="settings-card-title">Appearance</h2>
-                    </div>
 
-                    <div className="settings-section">
-                        <div className="appearance-toggle-row">
-                            <div className="appearance-info">
-                                <div className="appearance-icon-box">
-                                    {theme === 'light'
-                                        ? <Sun size={22} style={{ color: '#f59e0b' }} />
-                                        : <Moon size={22} style={{ color: 'var(--primary)' }} />
-                                    }
+                        <div className="settings-section">
+                            <div className="appearance-toggle-row">
+                                <div className="appearance-info">
+                                    <div className="appearance-icon-box">
+                                        {theme === 'light'
+                                            ? <Sun size={22} style={{ color: '#f59e0b' }} />
+                                            : <Moon size={22} style={{ color: 'var(--primary)' }} />
+                                        }
+                                    </div>
+                                    <div className="appearance-text">
+                                        <h3>App Theme</h3>
+                                        <p>Choose your preferred theme.</p>
+                                    </div>
                                 </div>
-                                <div className="appearance-text">
-                                    <h3>App Theme</h3>
-                                    <p>Choose your preferred theme.</p>
+
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <button
+                                        onClick={() => theme !== 'light' && setTheme('light')}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            width: '40px',
+                                            height: '40px',
+                                            borderRadius: '10px',
+                                            border: theme === 'light' ? '2px solid #6366f1' : '1px solid var(--border)',
+                                            background: theme === 'light' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                    >
+                                        <Sun size={20} style={{ color: theme === 'light' ? '#6366f1' : 'var(--text-muted)' }} />
+                                    </button>
+                                    <button
+                                        onClick={() => theme !== 'dark' && setTheme('dark')}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            width: '40px',
+                                            height: '40px',
+                                            borderRadius: '10px',
+                                            border: theme === 'dark' ? '2px solid #6366f1' : '1px solid var(--border)',
+                                            background: theme === 'dark' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                    >
+                                        <Moon size={20} style={{ color: theme === 'dark' ? '#6366f1' : 'var(--text-muted)' }} />
+                                    </button>
                                 </div>
                             </div>
+                        </div>
+                        
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 'auto' }}>
+                            Visual preferences are saved locally and persist across sessions.
+                        </p>
+                    </div>
 
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                                <button
-                                    onClick={() => theme !== 'light' && setTheme('light')}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        width: '40px',
-                                        height: '40px',
-                                        borderRadius: '10px',
-                                        border: theme === 'light' ? '2px solid #6366f1' : '1px solid var(--border)',
-                                        background: theme === 'light' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.15s ease'
-                                    }}
-                                >
-                                    <Sun size={20} style={{ color: theme === 'light' ? '#6366f1' : 'var(--text-muted)' }} />
-                                </button>
-                                <button
-                                    onClick={() => theme !== 'dark' && setTheme('dark')}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        width: '40px',
-                                        height: '40px',
-                                        borderRadius: '10px',
-                                        border: theme === 'dark' ? '2px solid #6366f1' : '1px solid var(--border)',
-                                        background: theme === 'dark' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.15s ease'
-                                    }}
-                                >
-                                    <Moon size={20} style={{ color: theme === 'dark' ? '#6366f1' : 'var(--text-muted)' }} />
-                                </button>
+                    {/* PDF Preferences Card */}
+                    <div className="settings-card">
+                        <div className="settings-card-header">
+                            <div className="settings-card-icon" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
+                                <FileText size={20} />
+                            </div>
+                            <h2 className="settings-card-title">Preferences</h2>
+                        </div>
+
+                        <div className="settings-section">
+                            <div className="appearance-toggle-row">
+                                <div className="appearance-info">
+                                    <div className="appearance-icon-box" style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
+                                        <FileText size={22} style={{ color: '#3b82f6' }} />
+                                    </div>
+                                    <div className="appearance-text">
+                                        <h3>Auto-Open PDF</h3>
+                                        <p>Open PDF automatically after saving.</p>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <button
+                                        onClick={() => !autoOpenPdf && toggleAutoOpenPdf()}
+                                        style={{
+                                            padding: '6px 16px',
+                                            borderRadius: '8px',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 700,
+                                            border: autoOpenPdf ? '2px solid var(--primary)' : '1px solid var(--border)',
+                                            background: autoOpenPdf ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                                            color: autoOpenPdf ? 'var(--primary)' : 'var(--text-muted)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                    >
+                                        ON
+                                    </button>
+                                    <button
+                                        onClick={() => autoOpenPdf && toggleAutoOpenPdf()}
+                                        style={{
+                                            padding: '6px 16px',
+                                            borderRadius: '8px',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 700,
+                                            border: !autoOpenPdf ? '2px solid #ef4444' : '1px solid var(--border)',
+                                            background: !autoOpenPdf ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
+                                            color: !autoOpenPdf ? '#ef4444' : 'var(--text-muted)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                    >
+                                        OFF
+                                    </button>
+                                </div>
                             </div>
                         </div>
+                        
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 'auto' }}>
+                            Control document handling behavior.
+                        </p>
                     </div>
-                    
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 'auto' }}>
-                        Visual preferences are saved locally and persist across sessions.
-                    </p>
                 </div>
 
                 {/* Theme Presets Card */}

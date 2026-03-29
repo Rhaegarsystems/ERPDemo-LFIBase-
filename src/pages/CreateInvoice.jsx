@@ -11,6 +11,7 @@ import { toWords } from 'number-to-words';
 import PartSelectorModal from '../components/PartSelectorModal';
 import CustomerSelectorModal from '../components/CustomerSelectorModal';
 import { useToast } from '../components/ToastProvider';
+import { useTheme } from '../context/ThemeContext';
 import '../styles/PageCommon.css';
 import lfiLogo from '../assets/Logo.png';
 
@@ -129,6 +130,7 @@ const extractCustomerDetails = (customer) => {
 const CreateInvoice = () => {
     const navigate = useNavigate();
     const { id } = useParams();
+    const { autoOpenPdf } = useTheme();
     const invoiceRef = useRef(null);
     const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'success', title: '', message: '' });
     const [pdfProgress, setPdfProgress] = useState({ isGenerating: false, progress: 0, status: '' });
@@ -420,6 +422,15 @@ const CreateInvoice = () => {
                         }
                     }
                 });
+                
+                // Stable Auto-Open using backend command (only if enabled)
+                if (autoOpenPdf) {
+                    try {
+                        await invoke('open_file', { path: filePath });
+                    } catch (e) {
+                        console.error("Failed to auto-open PDF:", e);
+                    }
+                }
             } else {
                 setPdfProgress({ isGenerating: false, progress: 0, status: '' });
                 toast.warning('PDF Not Saved', 'Operation cancelled by user.');
