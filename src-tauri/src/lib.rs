@@ -168,6 +168,26 @@ fn get_dev_pin() -> Result<String, String> {
     std::env::var("DEV_PIN").map_err(|_| "DEV_PIN not found in .env".to_string())
 }
 
+#[tauri::command]
+fn open_file(path: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", &path])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        // Fallback for other OS if needed, but focuses on the user's current win32 env
+        #[cfg(target_os = "macos")]
+        std::process::Command::new("open").arg(&path).spawn().map_err(|e| e.to_string())?;
+        #[cfg(target_os = "linux")]
+        std::process::Command::new("xdg-open").arg(&path).spawn().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -209,7 +229,8 @@ pub fn run() {
             get_invoice,
             get_invoice_with_customer,
             get_database_key,
-            get_dev_pin
+            get_dev_pin,
+            open_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

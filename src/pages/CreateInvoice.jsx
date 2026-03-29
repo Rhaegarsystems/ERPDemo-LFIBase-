@@ -407,7 +407,19 @@ const CreateInvoice = () => {
                 setPdfProgress({ isGenerating: true, progress: 95, status: 'Saving to disk...' });
                 await writeFile(filePath, new Uint8Array(pdfData));
                 setPdfProgress({ isGenerating: false, progress: 100, status: '' });
-                toast.success('PDF Saved', `Saved to ${filePath}`);
+                
+                toast.success('PDF Saved', `Saved to ${filePath}`, {
+                    action: {
+                        label: 'Open PDF',
+                        onClick: async () => {
+                            try {
+                                await invoke('open_file', { path: filePath });
+                            } catch (e) {
+                                toast.error('Error', 'Could not open PDF file.');
+                            }
+                        }
+                    }
+                });
             } else {
                 setPdfProgress({ isGenerating: false, progress: 0, status: '' });
                 toast.warning('PDF Not Saved', 'Operation cancelled by user.');

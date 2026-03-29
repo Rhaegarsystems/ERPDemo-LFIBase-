@@ -21,12 +21,12 @@ export const ToastProvider = ({ children }) => {
         const newToast = {
             id,
             type: 'success',
-            duration: 3000,
+            duration: 5000, // Slightly longer for actions
             ...toast,
         };
         setToasts((prev) => [...prev, newToast]);
         
-        if (newToast.type !== 'error') {
+        if (newToast.type !== 'error' && !newToast.action) {
             setTimeout(() => {
                 setToasts((prev) => prev.filter((t) => t.id !== id));
             }, newToast.duration);
@@ -40,10 +40,10 @@ export const ToastProvider = ({ children }) => {
     }, []);
 
     const toast = {
-        success: (title, message) => addToast({ type: 'success', title, message }),
-        error: (title, message) => addToast({ type: 'error', title, message, duration: 5000 }),
-        warning: (title, message) => addToast({ type: 'warning', title, message }),
-        info: (title, message) => addToast({ type: 'info', title, message }),
+        success: (title, message, options = {}) => addToast({ type: 'success', title, message, ...options }),
+        error: (title, message, options = {}) => addToast({ type: 'error', title, message, duration: 8000, ...options }),
+        warning: (title, message, options = {}) => addToast({ type: 'warning', title, message, ...options }),
+        info: (title, message, options = {}) => addToast({ type: 'info', title, message, ...options }),
     };
 
     const getIcon = (type) => {
@@ -77,19 +77,30 @@ export const ToastProvider = ({ children }) => {
                             <motion.div
                                 key={t.id}
                                 className="toast"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.15 }}
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                transition={{ duration: 0.2 }}
                                 style={{ 
                                     borderLeftColor: colors.border,
                                     background: `linear-gradient(135deg, rgba(20, 20, 30, 0.98) 0%, ${colors.bg} 100%)`,
                                 }}
                             >
-                                <span style={{ color: colors.text }}>{getIcon(t.type)}</span>
+                                <span style={{ color: colors.text, display: 'flex' }}>{getIcon(t.type)}</span>
                                 <div className="toast-content">
                                     <p className="toast-title">{t.title}</p>
                                     {t.message && <p className="toast-message">{t.message}</p>}
+                                    {t.action && (
+                                        <button 
+                                            className="toast-action-btn"
+                                            onClick={() => {
+                                                t.action.onClick();
+                                                if (t.action.closeOnClick !== false) removeToast(t.id);
+                                            }}
+                                        >
+                                            {t.action.label}
+                                        </button>
+                                    )}
                                 </div>
                                 <button className="toast-close" onClick={() => removeToast(t.id)}>×</button>
                             </motion.div>
