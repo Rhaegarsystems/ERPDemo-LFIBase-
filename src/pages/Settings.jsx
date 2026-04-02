@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { Moon, Sun, Monitor, Info, Code, Calendar, Shield, Database, Download, Upload, Cloud, RefreshCw, Terminal, Copy, Archive, FileText } from 'lucide-react';
+import { Moon, Sun, Monitor, Info, Code, Calendar, Shield, Database, Download, Upload, Cloud, RefreshCw, Terminal, Copy, Archive, FileText, Check } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { save, open } from '@tauri-apps/plugin-dialog';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
+import Modal from '../components/Modal';
 import { useToast } from '../components/ToastProvider';
 import '../styles/PageCommon.css';
 import '../styles/Settings.css';
@@ -16,6 +17,10 @@ const Settings = () => {
     const [isConnected, setIsConnected] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [latestBackup, setLatestBackup] = useState(null);
+    const [backupList, setBackupList] = useState([]);
+    const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
+    const [isRestoring, setIsRestoring] = useState(false);
+    const [selectedBackup, setSelectedBackup] = useState(null);
     
     // Developer Mode State
     const [versionClicks, setVersionClicks] = useState(0);
@@ -33,6 +38,15 @@ const Settings = () => {
         }
     };
 
+    const fetchBackupList = async () => {
+        try {
+            const list = await invoke('list_cloud_backups');
+            setBackupList(list || []);
+        } catch (e) {
+            setBackupList([]);
+        }
+    };
+
     useEffect(() => {
         const checkConnection = async () => {
             try {
@@ -41,6 +55,7 @@ const Settings = () => {
                 setIsConnected(connected);
                 if (connected) {
                     fetchLatestBackupInfo();
+                    fetchBackupList();
                 }
             } catch (e) {
                 console.error("Failed to check Cloud configuration:", e);
@@ -145,15 +160,26 @@ const Settings = () => {
     };
 
     const handleCloudRestore = async () => {
-        setIsSyncing(true);
+        await fetchBackupList();
+        setIsRestoreModalOpen(true);
+    };
+
+    const handleRestoreConfirm = async () => {
+        if (!selectedBackup) {
+            toast.error('Please select a backup to restore');
+            return;
+        }
+        setIsRestoring(true);
         try {
-            const result = await invoke('restore_now');
-            toast.success('Cloud Restore Successful', result);
+            const result = await invoke('restore_backup_file', { fileName: selectedBackup.key });
+            toast.success('Restore Successful', result);
+            setIsRestoreModalOpen(false);
+            setSelectedBackup(null);
             fetchLatestBackupInfo();
         } catch (e) {
-            toast.error('Cloud Restore Failed', String(e));
+            toast.error('Restore Failed', String(e));
         } finally {
-            setIsSyncing(false);
+            setIsRestoring(false);
         }
     };
 
@@ -324,10 +350,10 @@ const Settings = () => {
                     </div>
 
                     <div className="settings-section">
-                        <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-primary)' }}>
-                            {theme === 'light' ? 'Light Mode Presets' : 'Dark Mode Presets'}
+                        <h3 style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--text-primary)' }}>
+                            {theme === 'light' ? 'Light Mode' : 'Dark Mode'}
                         </h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '10px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '8px' }}>
                             {(theme === 'light' 
                                 ? [
                                     { id: 'default', label: 'Default', color: '#6366f1' },
@@ -351,102 +377,154 @@ const Settings = () => {
                                         display: 'flex',
                                         flexDirection: 'column',
                                         alignItems: 'center',
-                                        gap: '8px',
-                                        padding: '10px',
-                                        borderRadius: '12px',
+                                        gap: '6px',
+                                        padding: '10px 6px',
+                                        borderRadius: '10px',
                                         border: variant === v.id ? '2px solid var(--primary)' : '1px solid var(--border)',
                                         background: variant === v.id ? 'rgba(99, 102, 241, 0.1)' : 'var(--bg-secondary)',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s ease'
                                     }}
                                 >
-                                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: v.color, border: '1px solid rgba(255,255,255,0.1)' }} />
-                                    <span style={{ fontSize: '0.75rem', fontWeight: 500, color: variant === v.id ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{v.label}</span>
+                                    <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: v.color, border: '1px solid rgba(255,255,255,0.1)' }} />
+                                    <span style={{ fontSize: '0.7rem', fontWeight: 500, color: variant === v.id ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{v.label}</span>
                                 </button>
                             ))}
                         </div>
                     </div>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 'auto' }}>
-                        Customize the primary color and feel of your chosen theme.
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 'auto' }}>
+                        Customize your theme color.
                     </p>
                 </div>
 
-                {/* Data Management Card */}
-                <div className="settings-card" style={{ height: 'auto' }}>
+                {/* Cloud Backup Card - Intermediate */}
+                <div className="settings-card">
                     <div className="settings-card-header">
                         <div className="settings-card-icon" style={{ background: 'rgba(139, 92, 246, 0.1)', color: 'var(--primary)' }}>
-                            <Database size={20} />
+                            <Cloud size={20} />
                         </div>
                         <h2 className="settings-card-title">Cloud Backup</h2>
                     </div>
 
                     <div className="settings-section">
                         {!isConnected ? (
-                            <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-                                <div style={{ 
-                                    width: '60px', 
-                                    height: '60px', 
-                                    borderRadius: '50%', 
-                                    background: 'rgba(239, 68, 68, 0.1)', 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'center',
-                                    margin: '0 auto 1rem'
-                                }}>
-                                    <Shield size={30} style={{ color: 'var(--danger)' }} />
-                                </div>
-                                <h3 style={{ fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Cloud Not Configured</h3>
-                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                                    Required cloud credentials must be provided in the configuration files to enable cloud backups.
+                            <div style={{ textAlign: 'center', padding: '0.5rem 0' }}>
+                                <Shield size={24} style={{ color: 'var(--danger)', marginBottom: '0.5rem' }} />
+                                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
+                                    Configure credentials to enable
                                 </p>
                             </div>
                         ) : (
                             <div>
-                                <div style={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    gap: '0.75rem', 
-                                    padding: '0.75rem',
-                                    background: 'rgba(139, 92, 246, 0.1)',
-                                    borderRadius: 'var(--radius-md)',
-                                    marginBottom: '1.5rem',
-                                    border: '1px solid rgba(139, 92, 246, 0.2)'
-                                }}>
-                                    <Cloud size={20} style={{ color: 'var(--primary)' }} />
-                                    <div style={{ flex: 1 }}>
-                                        <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)' }}>Cloud Backup Active</p>
-                                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                            {latestBackup ? `Last Backup: ${latestBackup}` : 'System ready for data synchronization'}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="database-actions" style={{ marginBottom: '1rem' }}>
+                                {/* Action Buttons */}
+                                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
                                     <button 
-                                        className="btn-glass" 
                                         onClick={handleCloudBackup} 
                                         disabled={isSyncing}
-                                        style={{ justifyContent: 'center', padding: '0.8rem', flex: 1 }}
+                                        style={{ 
+                                            flex: 1,
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'center', 
+                                            gap: '0.4rem',
+                                            padding: '0.65rem',
+                                            borderRadius: '8px',
+                                            border: 'none',
+                                            background: 'linear-gradient(135deg, var(--primary) 0%, #818cf8 100%)',
+                                            color: 'white',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 600,
+                                            cursor: isSyncing ? 'not-allowed' : 'pointer',
+                                            opacity: isSyncing ? 0.7 : 1,
+                                            boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)'
+                                        }}
                                     >
-                                        {isSyncing ? <RefreshCw size={18} className="spin" /> : <Upload size={18} />} 
-                                        {isSyncing ? 'Syncing...' : 'Backup to Cloud'}
+                                        {isSyncing ? <RefreshCw size={12} className="spin" /> : <Upload size={12} />}
+                                        {isSyncing ? 'Uploading...' : 'Backup Now'}
                                     </button>
                                     <button 
-                                        className="btn-glass" 
                                         onClick={handleCloudRestore} 
                                         disabled={isSyncing}
-                                        style={{ justifyContent: 'center', padding: '0.8rem', flex: 1 }}
+                                        style={{ 
+                                            flex: 1,
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'center', 
+                                            gap: '0.4rem',
+                                            padding: '0.65rem',
+                                            borderRadius: '8px',
+                                            border: '1px solid var(--border)',
+                                            background: 'transparent',
+                                            color: 'var(--text-primary)',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 600,
+                                            cursor: isSyncing ? 'not-allowed' : 'pointer',
+                                            opacity: isSyncing ? 0.7 : 1
+                                        }}
                                     >
-                                        {isSyncing ? <RefreshCw size={18} className="spin" /> : <Download size={18} />} 
-                                        {isSyncing ? 'Syncing...' : 'Restore from Cloud'}
+                                        {isSyncing ? <RefreshCw size={12} className="spin" /> : <Download size={12} />}
+                                        {isSyncing ? 'Downloading...' : 'Restore'}
                                     </button>
+                                </div>
+
+                                {/* Backup History */}
+                                <div style={{ 
+                                    background: 'var(--bg-secondary)', 
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--border)',
+                                    overflow: 'hidden'
+                                }}>
+                                    <div style={{ 
+                                        padding: '0.5rem 0.75rem', 
+                                        borderBottom: '1px solid var(--border)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.4rem'
+                                    }}>
+                                        <Archive size={12} style={{ color: 'var(--text-muted)' }} />
+                                        <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                            Backup History
+                                        </span>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        {backupList.length > 0 ? (
+                                            backupList.slice(0, 8).map((backup, index) => (
+                                                <div 
+                                                    key={index}
+                                                    style={{ 
+                                                        padding: '0.5rem 0.75rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        borderBottom: index < Math.min(backupList.length, 8) - 1 ? '1px solid var(--border)' : 'none'
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+                                                        <Database size={12} style={{ color: 'var(--primary)' }} />
+                                                        <span style={{ fontSize: '0.65rem', color: 'var(--text-primary)' }}>
+                                                            {backup.key.split('/').pop()}
+                                                        </span>
+                                                    </div>
+                                                    <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                                                        {backup.last_modified ? new Date(backup.last_modified).toLocaleDateString() : ''}
+                                                    </span>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div style={{ padding: '1rem', textAlign: 'center' }}>
+                                                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0 }}>
+                                                    No backups yet
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )}
-                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '1rem' }}>
-                            Your data is encrypted locally before being uploaded to secure cloud storage.
-                        </p>
                     </div>
+                    <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 'auto' }}>
+                        {latestBackup ? `Last backup: ${latestBackup}` : 'Encrypted backup to cloud'}
+                    </p>
                 </div>
 
                 {/* System Info Card */}
@@ -470,7 +548,7 @@ const Settings = () => {
                             <Code size={18} className="tech-info-icon" />
                             <div>
                                 <p className="tech-info-label">Version</p>
-                                <p className="tech-info-value">1.5.0</p>
+                                <p className="tech-info-value">1.6.0</p>
                             </div>
                         </div>
 
@@ -601,6 +679,85 @@ const Settings = () => {
                 itemName="ALL local database data and encryption keys"
                 title="Reset Database"
             />
+
+            {/* Restore Backup Modal */}
+            <Modal
+                isOpen={isRestoreModalOpen}
+                onClose={() => { setIsRestoreModalOpen(false); setSelectedBackup(null); }}
+                title="Select Backup to Restore"
+                actions={
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                        <button 
+                            className="btn-ghost" 
+                            onClick={() => { setIsRestoreModalOpen(false); setSelectedBackup(null); }}
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            className="btn-primary-glow" 
+                            onClick={handleRestoreConfirm}
+                            disabled={!selectedBackup || isRestoring}
+                            style={{ opacity: (!selectedBackup || isRestoring) ? 0.5 : 1 }}
+                        >
+                            {isRestoring ? <RefreshCw size={14} className="spin" /> : <Check size={14} />}
+                            {isRestoring ? 'Restoring...' : 'Restore'}
+                        </button>
+                    </div>
+                }
+            >
+                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                    {backupList.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            {backupList.map((backup, index) => (
+                                <div 
+                                    key={index}
+                                    onClick={() => setSelectedBackup(backup)}
+                                    style={{ 
+                                        padding: '0.75rem',
+                                        borderRadius: '8px',
+                                        border: selectedBackup?.key === backup.key 
+                                            ? '2px solid var(--primary)' 
+                                            : '1px solid var(--border)',
+                                        background: selectedBackup?.key === backup.key 
+                                            ? 'rgba(99, 102, 241, 0.1)' 
+                                            : 'var(--bg-secondary)',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <Database size={16} style={{ color: 'var(--primary)' }} />
+                                        <div>
+                                            <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+                                                {backup.key.split('/').pop()}
+                                            </p>
+                                            <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                                {backup.last_modified ? new Date(backup.last_modified).toLocaleString() : ''}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {selectedBackup?.key === backup.key && (
+                                        <Check size={16} style={{ color: 'var(--primary)' }} />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div style={{ textAlign: 'center', padding: '2rem' }}>
+                            <Archive size={32} style={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }} />
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
+                                No backups found
+                            </p>
+                        </div>
+                    )}
+                </div>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '1rem' }}>
+                    The application will restart after restore to load the restored data.
+                </p>
+            </Modal>
         </div>
     );
 };

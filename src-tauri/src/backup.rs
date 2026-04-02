@@ -1,68 +1,74 @@
 use anyhow::{anyhow, Result};
-use aws_config::BehaviorVersion;
-use aws_sdk_s3::{Client, primitives::ByteStream};
+use reqwest::Client;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::sync::Mutex;
+use std::time::Duration;
 use tauri::AppHandle;
 use tauri::Manager;
-use std::env;
 
-// --- Cloud Configuration ---
+const API_GATEWAY_URL: &str = "https://r1nyt6hcze.execute-api.ap-south-1.amazonaws.com/default/lfi_backuprestore_gateway";
+const AUTH_HEADER: &str = "x-rhaegar-auth";
+const NETWORK_TIMEOUT_SECS: u64 = 30;
 
-fn get_cloud_config() -> Result<(String, String, String, String)> {
-    // In production, these should be baked in at compile time
-    // In dev, they are picked up from the environment or .env
-    
-    // Check if we have compile-time variables (baked in during cargo build)
-    let access_key = option_env!("AWS_ACCESS_KEY_ID");
-    let secret_key = option_env!("AWS_SECRET_ACCESS_KEY");
-    let region = option_env!("AWS_REGION");
-    let bucket = option_env!("AWS_S3_BUCKET");
-
-    if let (Some(ak), Some(sk), Some(reg), Some(buck)) = (access_key, secret_key, region, bucket) {
-        return Ok((ak.to_string(), sk.to_string(), reg.to_string(), buck.to_string()));
-    }
-
-    // Fallback to runtime environment (for development)
-    dotenvy::dotenv().ok();
-    dotenvy::from_filename(".env.local").ok();
-    
-    let access_key = env::var("AWS_ACCESS_KEY_ID")
-        .map_err(|_| anyhow!("Cloud Access Key not found. Please set AWS_ACCESS_KEY_ID at compile time or in .env"))?;
-    let secret_key = env::var("AWS_SECRET_ACCESS_KEY")
-        .map_err(|_| anyhow!("Cloud Secret Key not found. Please set AWS_SECRET_ACCESS_KEY at compile time or in .env"))?;
-    let region = env::var("AWS_REGION")
-        .map_err(|_| anyhow!("Cloud Region not found. Please set AWS_REGION at compile time or in .env"))?;
-    let bucket = env::var("AWS_S3_BUCKET")
-        .map_err(|_| anyhow!("Cloud Storage Identifier not found. Please set AWS_S3_BUCKET at compile time or in .env"))?;
-    Ok((access_key, secret_key, region, bucket))
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BackupInfo {
+    pub key: String,
+    pub last_modified: String,
 }
 
-async fn get_cloud_client() -> Result<(Client, String)> {
-    let (_, _, region, bucket) = get_cloud_config()?;
-    let config = aws_config::defaults(BehaviorVersion::latest())
-        .region(aws_sdk_s3::config::Region::new(region))
-        .load()
-        .await;
-    let client = Client::new(&config);
-    Ok((client, bucket))
-}
-
-// Global state
 pub struct BackupState {
     pub _last_backup_check: Mutex<Option<String>>,
 }
 
-// --- Backup Operations ---
+fn get_env_vars() -> (String, String, String) {
+    let auth_secret = option_env!("BACKUP_AUTH_SECRETS")
+        .map(|s| s.to_string())
+        .unwrap_or_default();
+    let region = option_env!("MY_AWS_REGION")
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "ap-south-1".to_string());
+    let bucket = option_env!("AWS_S3_BUCKET")
+        .map(|s| s.to_string())
+        .unwrap_or_default();
+    (auth_secret, region, bucket)
+}
+
+fn get_gateway_url() -> String {
+    option_env!("API_GATEWAY_URL")
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| API_GATEWAY_URL.to_string())
+}
 
 pub fn is_connected(_app_handle: &AppHandle) -> bool {
-    get_cloud_config().is_ok()
+    let (auth_secret, _, _) = get_env_vars();
+    !auth_secret.is_empty()
+}
+
+pub async fn vacuum_database(app_handle: &AppHandle) -> Result<()> {
+    let app_dir = app_handle.path().app_data_dir().expect("Failed to get app data dir");
+    let db_path = app_dir.join("littleflower.db");
+    
+    if !db_path.exists() {
+        return Err(anyhow!("Database file not found at {:?}", db_path));
+    }
+
+    let conn = crate::db::open_encrypted_conn(app_handle).map_err(|e| anyhow!("Database connection failed: {}", e))?;
+    
+    conn.execute_batch("VACUUM").map_err(|e| {
+        anyhow!("VACUUM failed - database may be locked or in use. Close any other connections and try again. Error: {}", e)
+    })?;
+    
+    Ok(())
 }
 
 pub async fn upload_backup(app_handle: AppHandle) -> Result<String> {
-    let (client, bucket) = get_cloud_client().await?;
+    let (auth_secret, region, bucket) = get_env_vars();
+    
+    if auth_secret.is_empty() {
+        return Err(anyhow!("Backup authentication not configured. Please set BACKUP_AUTH_SECRETS in environment."));
+    }
 
-    // Get DB path
     let app_dir = app_handle.path().app_data_dir().expect("Failed to get app data dir");
     let db_path = app_dir.join("littleflower.db");
     let key_path = app_dir.join("secret.key");
@@ -71,81 +77,189 @@ pub async fn upload_backup(app_handle: AppHandle) -> Result<String> {
         return Err(anyhow!("Database file not found at {:?}", db_path));
     }
 
+    vacuum_database(&app_handle).await?;
+
+    let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
+    let file_name = format!("backups/littleflower_backup_{}.db", timestamp);
+
+    let client = Client::builder()
+        .timeout(Duration::from_secs(NETWORK_TIMEOUT_SECS))
+        .build()
+        .map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
+
+    let presigned_url = get_presigned_url(&client, &file_name, &auth_secret, &region, &bucket).await?;
+    
     let file_content = fs::read(&db_path)?;
     
-    // Time-based file name: littleflower_backup_YYYYMMDD_HHMMSS.db
-    let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
-    let file_name = format!("littleflower_backup_{}.db", timestamp);
-
-    let body = ByteStream::from(file_content);
-
-    client.put_object()
-        .bucket(&bucket)
-        .key(&file_name)
-        .body(body)
+    let response = client.put(&presigned_url)
+        .header("Content-Type", "application/octet-stream")
+        .body(file_content)
         .send()
         .await
-        .map_err(|e| anyhow!("Failed to upload to Cloud storage: {}", e))?;
+        .map_err(|e| anyhow!("Network timeout or error during S3 upload: {}. Please check your internet connection.", e))?;
 
-    // Also upload the encryption key if it exists
-    if key_path.exists() {
-        let key_content = fs::read(&key_path)?;
-        client.put_object()
-            .bucket(&bucket)
-            .key("secret.key")
-            .body(ByteStream::from(key_content))
-            .send()
-            .await
-            .ok();
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(anyhow!("S3 upload failed with status {}: {}. Contact administrator if this persists.", status, body));
     }
 
-    // Also update a "latest" pointer or just keep the latest for easy restore
-    let body_latest = ByteStream::from(fs::read(&db_path)?);
-    client.put_object()
-        .bucket(&bucket)
-        .key("littleflower_backup_latest.db")
-        .body(body_latest)
+    if key_path.exists() {
+        let key_presigned_url = get_key_presigned_url(&client, &auth_secret, &region, &bucket).await?;
+        let key_content = fs::read(&key_path)?;
+        
+        let response = client.put(&key_presigned_url)
+            .header("Content-Type", "application/octet-stream")
+            .body(key_content)
+            .send()
+            .await;
+        
+        if let Err(e) = response {
+            log::warn!("Failed to upload encryption key: {}", e);
+        }
+    }
+
+    let latest_presigned_url = get_presigned_url(&client, "backups/littleflower_backup_latest.db", &auth_secret, &region, &bucket).await?;
+    let file_content_latest = fs::read(&db_path)?;
+    
+    let response = client.put(&latest_presigned_url)
+        .header("Content-Type", "application/octet-stream")
+        .body(file_content_latest)
         .send()
         .await
-        .ok(); 
+        .map_err(|e| anyhow!("Failed to upload latest backup: {}", e))?;
+
+    if !response.status().is_success() {
+        log::warn!("Failed to update latest backup: {}", response.status());
+    }
 
     Ok(format!("Backup uploaded successfully: {}", file_name))
 }
 
-pub async fn restore_backup(app_handle: AppHandle) -> Result<String> {
-    let (client, bucket) = get_cloud_client().await?;
+async fn get_presigned_url(client: &Client, file_name: &str, auth_secret: &str, region: &str, bucket: &str) -> Result<String> {
+    let gateway_url = get_gateway_url();
     
-    // 1. Restore the key first
-    if let Ok(res) = client.get_object().bucket(&bucket).key("secret.key").send().await {
-        if let Ok(data) = res.body.collect().await {
-            let app_dir = app_handle.path().app_data_dir().expect("Failed to get app data dir");
-            let key_path = app_dir.join("secret.key");
-            fs::write(&key_path, data.into_bytes()).ok();
-            
-            // CRITICAL: Clear the cached key in memory so the app reads the new one
-            crate::db::clear_cached_key();
+    let response = client.post(&gateway_url)
+        .header("Content-Type", "application/json")
+        .header(AUTH_HEADER, auth_secret)
+        .json(&serde_json::json!({
+            "action": "getUploadUrl",
+            "fileName": file_name,
+            "region": region,
+            "bucket": bucket
+        }))
+        .timeout(Duration::from_secs(NETWORK_TIMEOUT_SECS))
+        .send()
+        .await
+        .map_err(|e| anyhow!("Failed to connect to API gateway (timeout or network error): {}", e))?;
+
+    if response.status().as_u16() == 401 || response.status().as_u16() == 403 {
+        return Err(anyhow!("Unauthorized: Invalid authentication credentials. Please check BACKUP_AUTH_SECRETS."));
+    }
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(anyhow!("API gateway returned error {}: {}", status, body));
+    }
+
+    #[derive(serde::Deserialize)]
+    struct PresignedResponse {
+        #[serde(alias = "uploadUrl", alias = "upload_url")]
+        upload_url: String,
+    }
+
+    let presigned: PresignedResponse = response.json()
+        .await
+        .map_err(|e| anyhow!("Failed to parse presigned URL response: {}", e))?;
+
+    Ok(presigned.upload_url)
+}
+
+async fn get_key_presigned_url(client: &Client, auth_secret: &str, region: &str, bucket: &str) -> Result<String> {
+    let gateway_url = get_gateway_url();
+    
+    let response = client.post(&gateway_url)
+        .header("Content-Type", "application/json")
+        .header(AUTH_HEADER, auth_secret)
+        .json(&serde_json::json!({
+            "action": "getUploadUrl",
+            "fileName": "secret.key",
+            "region": region,
+            "bucket": bucket
+        }))
+        .timeout(Duration::from_secs(NETWORK_TIMEOUT_SECS))
+        .send()
+        .await
+        .map_err(|e| anyhow!("Failed to get key presigned URL from API gateway: {}", e))?;
+
+    if response.status().as_u16() == 401 || response.status().as_u16() == 403 {
+        return Err(anyhow!("Unauthorized: Invalid authentication credentials for key."));
+    }
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(anyhow!("API gateway returned error {}: {}", status, body));
+    }
+
+    #[derive(serde::Deserialize)]
+    struct PresignedResponse {
+        #[serde(alias = "uploadUrl", alias = "upload_url")]
+        upload_url: String,
+    }
+
+    let presigned: PresignedResponse = response.json()
+        .await
+        .map_err(|e| anyhow!("Failed to parse key presigned URL response: {}", e))?;
+
+    Ok(presigned.upload_url)
+}
+
+pub async fn restore_backup(app_handle: AppHandle) -> Result<String> {
+    let (auth_secret, region, bucket) = get_env_vars();
+    
+    if auth_secret.is_empty() {
+        return Err(anyhow!("Backup authentication not configured. Please set BACKUP_AUTH_SECRETS in environment."));
+    }
+
+    let client = Client::builder()
+        .timeout(Duration::from_secs(NETWORK_TIMEOUT_SECS))
+        .build()
+        .map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
+    
+    let key_download_url = get_key_download_url(&client, &auth_secret, &region, &bucket).await?;
+    
+    if let Ok(response) = client.get(&key_download_url).send().await {
+        if response.status().is_success() {
+            if let Ok(key_data) = response.bytes().await {
+                let app_dir = app_handle.path().app_data_dir().expect("Failed to get app data dir");
+                let key_path = app_dir.join("secret.key");
+                fs::write(&key_path, key_data).ok();
+                
+                crate::db::clear_cached_key();
+            }
         }
     }
 
-    // 2. Restore the database
-    let file_name = "littleflower_backup_latest.db";
-
-    let res = client.get_object()
-        .bucket(&bucket)
-        .key(file_name)
+    let download_url = get_download_url(&client, "backups/littleflower_backup_latest.db", &auth_secret, &region, &bucket).await?;
+    
+    let response = client.get(&download_url)
         .send()
         .await
-        .map_err(|e| anyhow!("No backup found in Cloud storage: {}", e))?;
+        .map_err(|e| anyhow!("Failed to download backup: {}", e))?;
 
-    let data = res.body.collect().await
-        .map_err(|e| anyhow!("Failed to download backup data: {}", e))?
-        .into_bytes();
+    if !response.status().is_success() {
+        return Err(anyhow!("No backup found in Cloud storage: {}", response.status()));
+    }
 
-    // Save to local path (overwrite)
+    let data = response.bytes()
+        .await
+        .map_err(|e| anyhow!("Failed to read backup data: {}", e))?;
+
     let app_dir = app_handle.path().app_data_dir().expect("Failed to get app data dir");
     let db_path = app_dir.join("littleflower.db");
     
-    // Backup the current local file just in case
     let backup_local = app_dir.join("littleflower.db.old");
     if db_path.exists() {
         fs::copy(&db_path, &backup_local)?;
@@ -156,24 +270,198 @@ pub async fn restore_backup(app_handle: AppHandle) -> Result<String> {
     Ok("Data restored successfully from Cloud storage. Please restart the application for changes to take effect.".to_string())
 }
 
-pub async fn get_latest_backup_info() -> Result<String> {
-    let (client, bucket) = get_cloud_client().await?;
+pub async fn restore_specific_backup(app_handle: AppHandle, file_name: String) -> Result<String> {
+    let (auth_secret, region, bucket) = get_env_vars();
     
-    let res = client.head_object()
-        .bucket(&bucket)
-        .key("littleflower_backup_latest.db")
+    if auth_secret.is_empty() {
+        return Err(anyhow!("Backup authentication not configured. Please set BACKUP_AUTH_SECRETS in environment."));
+    }
+
+    let client = Client::builder()
+        .timeout(Duration::from_secs(NETWORK_TIMEOUT_SECS))
+        .build()
+        .map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
+
+    // Download key first
+    let key_download_url = get_key_download_url(&client, &auth_secret, &region, &bucket).await?;
+    
+    if let Ok(response) = client.get(&key_download_url).send().await {
+        if response.status().is_success() {
+            if let Ok(key_data) = response.bytes().await {
+                let app_dir = app_handle.path().app_data_dir().expect("Failed to get app data dir");
+                let key_path = app_dir.join("secret.key");
+                fs::write(&key_path, key_data).ok();
+                crate::db::clear_cached_key();
+            }
+        }
+    }
+
+    // Download specific backup
+    let download_url = get_download_url(&client, &file_name, &auth_secret, &region, &bucket).await?;
+    
+    let response = client.get(&download_url)
         .send()
         .await
-        .map_err(|e| anyhow!("No backup found: {}", e))?;
+        .map_err(|e| anyhow!("Failed to download backup: {}", e))?;
 
-    if let Some(last_modified) = res.last_modified() {
-        let secs = last_modified.secs();
-        let datetime = chrono::DateTime::from_timestamp(secs, 0)
-            .ok_or_else(|| anyhow!("Invalid timestamp"))?;
-        let local_time: chrono::DateTime<chrono::Local> = datetime.into();
-        Ok(local_time.format("%Y-%m-%d %H:%M:%S").to_string())
+    if !response.status().is_success() {
+        return Err(anyhow!("Backup not found: {}", response.status()));
+    }
+
+    let data = response.bytes()
+        .await
+        .map_err(|e| anyhow!("Failed to read backup data: {}", e))?;
+
+    let app_dir = app_handle.path().app_data_dir().expect("Failed to get app data dir");
+    let db_path = app_dir.join("littleflower.db");
+    
+    let backup_local = app_dir.join("littleflower.db.old");
+    if db_path.exists() {
+        fs::copy(&db_path, &backup_local)?;
+    }
+
+    fs::write(&db_path, data)?;
+
+    Ok(format!("Restored '{}' successfully. Please restart the application.", file_name))
+}
+
+async fn get_download_url(client: &Client, file_name: &str, auth_secret: &str, region: &str, bucket: &str) -> Result<String> {
+    let gateway_url = get_gateway_url();
+    
+    let response = client.post(&gateway_url)
+        .header("Content-Type", "application/json")
+        .header(AUTH_HEADER, auth_secret)
+        .json(&serde_json::json!({
+            "action": "getDownloadUrl",
+            "fileName": file_name,
+            "region": region,
+            "bucket": bucket
+        }))
+        .timeout(Duration::from_secs(NETWORK_TIMEOUT_SECS))
+        .send()
+        .await
+        .map_err(|e| anyhow!("Failed to get download URL from API gateway: {}", e))?;
+
+    if response.status().as_u16() == 401 || response.status().as_u16() == 403 {
+        return Err(anyhow!("Unauthorized: Invalid authentication credentials."));
+    }
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(anyhow!("API gateway returned error {}: {}", status, body));
+    }
+
+    #[derive(serde::Deserialize)]
+    struct DownloadResponse {
+        #[serde(alias = "downloadUrl", alias = "download_url")]
+        download_url: String,
+    }
+
+    let download: DownloadResponse = response.json()
+        .await
+        .map_err(|e| anyhow!("Failed to parse download URL response: {}", e))?;
+
+    Ok(download.download_url)
+}
+
+async fn get_key_download_url(client: &Client, auth_secret: &str, region: &str, bucket: &str) -> Result<String> {
+    let gateway_url = get_gateway_url();
+    
+    let response = client.post(&gateway_url)
+        .header("Content-Type", "application/json")
+        .header(AUTH_HEADER, auth_secret)
+        .json(&serde_json::json!({
+            "action": "getDownloadUrl",
+            "fileName": "secret.key",
+            "region": region,
+            "bucket": bucket
+        }))
+        .timeout(Duration::from_secs(NETWORK_TIMEOUT_SECS))
+        .send()
+        .await
+        .map_err(|e| anyhow!("Failed to get key download URL from API gateway: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(anyhow!("Failed to get key download URL: {}", response.status()));
+    }
+
+    #[derive(serde::Deserialize)]
+    struct DownloadResponse {
+        #[serde(alias = "downloadUrl", alias = "download_url")]
+        download_url: String,
+    }
+
+    let download: DownloadResponse = response.json()
+        .await
+        .map_err(|e| anyhow!("Failed to parse key download URL response: {}", e))?;
+
+    Ok(download.download_url)
+}
+
+pub async fn list_backups() -> Result<Vec<BackupInfo>> {
+    let (auth_secret, region, bucket) = get_env_vars();
+    
+    if auth_secret.is_empty() {
+        return Err(anyhow!("Backup authentication not configured."));
+    }
+
+    let client = Client::builder()
+        .timeout(Duration::from_secs(NETWORK_TIMEOUT_SECS))
+        .build()
+        .map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
+
+    let gateway_url = get_gateway_url();
+    
+    let response = client.post(&gateway_url)
+        .header("Content-Type", "application/json")
+        .header(AUTH_HEADER, auth_secret)
+        .json(&serde_json::json!({
+            "action": "listBackups",
+            "region": region,
+            "bucket": bucket
+        }))
+        .timeout(Duration::from_secs(NETWORK_TIMEOUT_SECS))
+        .send()
+        .await
+        .map_err(|e| anyhow!("Failed to get backup list: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(anyhow!("Failed to list backups: {}", response.status()));
+    }
+
+    #[derive(Deserialize)]
+    struct S3BackupItem {
+        #[serde(rename = "Key", alias = "key")]
+        key: Option<String>,
+        #[serde(rename = "LastModified", alias = "last_modified")]
+        last_modified: Option<String>,
+    }
+
+    let backups: Vec<S3BackupItem> = response.json()
+        .await
+        .map_err(|e| anyhow!("Failed to parse backup list: {}", e))?;
+
+    let mut result: Vec<BackupInfo> = backups
+        .into_iter()
+        .filter(|b| b.key.as_ref().map(|k| k.contains("littleflower_backup")).unwrap_or(false))
+        .map(|b| BackupInfo {
+            key: b.key.unwrap_or_default(),
+            last_modified: b.last_modified.unwrap_or_default(),
+        })
+        .collect();
+
+    result.sort_by(|a, b| b.last_modified.cmp(&a.last_modified));
+
+    Ok(result)
+}
+
+pub async fn get_latest_backup_info() -> Result<String> {
+    let backups = list_backups().await?;
+    if let Some(latest) = backups.first() {
+        Ok(latest.last_modified.clone())
     } else {
-        Err(anyhow!("Last modified time not available"))
+        Err(anyhow!("No backups found"))
     }
 }
 
@@ -181,13 +469,9 @@ pub async fn get_latest_backup_info() -> Result<String> {
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn test_cloud_reachability() {
-        let (client, bucket) = get_cloud_client().await.expect("Failed to get Cloud client");
-        println!("Checking Cloud storage: {}", bucket);
-        match client.head_bucket().bucket(&bucket).send().await {
-            Ok(_) => println!("Cloud storage reachable!"),
-            Err(e) => panic!("Cloud storage not reachable: {:?}", e),
-        }
+    #[test]
+    fn test_env_vars() {
+        let (auth, region, bucket) = get_env_vars();
+        println!("Auth: {}, Region: {}, Bucket: {}", auth, region, bucket);
     }
 }

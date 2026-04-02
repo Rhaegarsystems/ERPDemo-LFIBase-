@@ -784,13 +784,27 @@ const CreateInvoice = () => {
                         </div>
                         <div className="inv-details">
                             <div className="row"><span>Invoice No:</span> <span>{invoice.id}</span></div>
-                            <div className="row"><span>Date:</span> <span>{invoice.date}</span></div>
-                            <div className="row"><span>P.O. No:</span> <span>{invoice.po_no || '-'}</span></div>
-                            <div className="row"><span>P.O. Date:</span> <span>{invoice.po_date || '-'}</span></div>
-                            <div className="row"><span>Transport:</span> <span>{invoice.transport_mode || '-'}</span></div>
-                            <div className="row"><span>Vendor Code:</span> <span>{invoice.vendor_code || '-'}</span></div>
+                            <div className="row"><span>Our Invoice Date:</span> <span>{invoice.date}</span></div>
                             <div className="row"><span>Your DC No:</span> <span>{invoice.dc_no || '-'}</span></div>
                             <div className="row"><span>Your DC Date:</span> <span>{invoice.dc_date || '-'}</span></div>
+                            <div className="row"><span>P.O No:</span> <span>{invoice.po_no || '-'}</span></div>
+                            <div className="row"><span>P.O Date:</span> <span>{invoice.po_date || '-'}</span></div>
+                            <div className="row"><span>Vendor Code:</span> <span>{invoice.vendor_code || '-'}</span></div>
+                            <div className="row"><span>Transport:</span> <span>{invoice.transport_mode || '-'}</span></div>
+                            <div className="row"><span>SAC Code:</span> <span>{invoice.sac_code || '-'}</span></div>
+                            <div className="row"><span>HSN Code:</span> <span>{invoice.hsn_code || '-'}</span></div>
+                            <div className="row">
+                                <span>(Service)</span>
+                                <span style={{ width: '11px', height: '11px', border: '1px solid black', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    {invoice.invoice_type && invoice.invoice_type.includes('Service') && '✓'}
+                                </span>
+                            </div>
+                            <div className="row">
+                                <span>(Sale)</span>
+                                <span style={{ width: '11px', height: '11px', border: '1px solid black', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    {invoice.invoice_type && invoice.invoice_type.includes('Sale') && '✓'}
+                                </span>
+                            </div>
                         </div>
                     </div>
 
@@ -834,26 +848,6 @@ const CreateInvoice = () => {
 
                     <div className="inv-footer-section">
                         <div className="left-section">
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span><strong>SAC CODE :</strong> {invoice.sac_code || '...........'}</span>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                        <span>(Service)</span>
-                                        <div style={{ width: '15px', height: '15px', border: '1px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            {invoice.invoice_type.includes('Service') && '✓'}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span><strong>HSN CODE :</strong> {invoice.hsn_code || '...........'}</span>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                        <span>(Sale)</span>
-                                        <div style={{ width: '15px', height: '15px', border: '1px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            {invoice.invoice_type.includes('Sale') && '✓'}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                             <div className="amount-words" style={{ marginTop: '10px' }}>
                                 <p><strong>Total Invoice Amount in Words:</strong></p>
                                 <p style={{ textTransform: 'capitalize' }}>{amountToWords(totals.total)}</p>
@@ -889,15 +883,15 @@ const CreateInvoice = () => {
                 .inv-header { text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 5px; position: relative; }
                 .logo-section { position: absolute; left: 0; top: 0; }
                 .logo-img { width: 80px; height: auto; max-height: 80px; object-fit: contain; }
-                .company-details h1 { font-size: 20px; font-weight: bold; margin: 0; text-transform: uppercase; color: black; }
-                .company-details p { margin: 2px 0; font-size: 12px; }
-                .gst-section { position: absolute; right: 0; top: 0; text-align: right; font-size: 12px; font-weight: bold; }
+                .company-details h1 { font-size: 22px; font-weight: bold; margin: 0; text-transform: uppercase; color: black; }
+                .company-details p { margin: 2px 0; font-size: 13px; }
+                .gst-section { position: absolute; right: 0; top: 0; text-align: right; font-size: 13px; font-weight: bold; }
                 .inv-meta-grid { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid black; margin-bottom: 0; }
-                .bill-to { padding: 5px; border-right: 1px solid black; font-size: 13px; }
-                .inv-details { font-size: 13px; }
+                .bill-to { padding: 5px; border-right: 1px solid black; font-size: 14px; }
+                .inv-details { font-size: 14px; }
                 .inv-details .row { display: flex; justify-content: space-between; border-bottom: 1px solid black; padding: 2px 5px; }
                 .inv-details .row:last-child { border-bottom: none; }
-                .inv-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; border: 1px solid black; }
+                .inv-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; border: 1px solid black; }
                 .inv-table th { border: 1px solid black; padding: 5px; background: #f0f0f0; }
                 .inv-table td { border: 1px solid black; border-top: none; border-bottom: none; padding: 4px 5px; vertical-align: middle; word-wrap: break-word; }
                 .inv-table tr { border-bottom: 1px solid black; }
@@ -905,11 +899,11 @@ const CreateInvoice = () => {
                 .table-input { border: none; width: 100%; background: transparent; font-family: inherit; padding: 0 0 2px 0; height: auto; }
                 .empty-row td { height: 24px; }
                 .inv-footer-section { display: grid; grid-template-columns: 1.5fr 1fr; border: 1px solid black; border-top: none; }
-                .left-section { padding: 5px; font-size: 12px; border-right: 1px solid black; }
-                .totals-section { font-size: 12px; }
+                .left-section { padding: 5px; font-size: 13px; border-right: 1px solid black; }
+                .totals-section { font-size: 13px; }
                 .totals-section .row { display: flex; justify-content: space-between; border-bottom: 1px solid black; padding: 2px 5px; }
                 .totals-section .row:last-child { border-bottom: none; }
-                .signature-section { display: flex; justify-content: space-between; padding: 20px 5px; border: 1px solid black; border-top: none; font-size: 12px; align-items: flex-end; }
+                .signature-section { display: flex; justify-content: space-between; padding: 20px 5px; border: 1px solid black; border-top: none; font-size: 13px; align-items: flex-end; }
                 .sign-box { text-align: center; }
                 @media print { .no-print { display: none; } .page-container { padding: 0; margin: 0; background: white; } .invoice-paper { border: none; margin: 0; } }
             `}</style>

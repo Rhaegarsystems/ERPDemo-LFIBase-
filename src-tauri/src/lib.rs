@@ -32,6 +32,16 @@ async fn get_latest_backup_info() -> Result<String, String> {
     backup::get_latest_backup_info().await.map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+async fn list_cloud_backups() -> Result<Vec<backup::BackupInfo>, String> {
+    backup::list_backups().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn restore_backup_file(app: tauri::AppHandle, file_name: String) -> Result<String, String> {
+    backup::restore_specific_backup(app, file_name).await.map_err(|e| e.to_string())
+}
+
 // --- Database Commands ---
 
 #[tauri::command]
@@ -222,6 +232,8 @@ pub fn run() {
             backup_now,
             restore_now,
             get_latest_backup_info,
+            list_cloud_backups,
+            restore_backup_file,
             export_db,
             import_db,
             reset_database,

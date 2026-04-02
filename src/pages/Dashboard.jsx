@@ -74,7 +74,7 @@ const Dashboard = () => {
             value: (
                 <div style={{ fontSize: '0.85rem', fontWeight: 'normal', lineHeight: '1.4', marginTop: '4px' }}>
                     <div style={{ color: 'var(--text-primary)', fontWeight: '600', marginBottom: '4px' }}>
-                        No 45/A, Thiruvalluvar Street, TMP Nagar, Padi, Chennai- 600 050
+                        No:209, New Tiny Sector, Ambattur Industrial Estate, Chennai-600058
                     </div>
                     <div style={{ color: 'var(--primary)' }}>
                         {formattedDate} | {formattedDay}

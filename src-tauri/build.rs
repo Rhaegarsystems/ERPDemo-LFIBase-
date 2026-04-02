@@ -20,5 +20,24 @@ fn main() {
         }
     }
 
+    dotenvy::dotenv().ok();
+    dotenvy::from_filename(".env.production").ok();
+
+    if let Ok(auth) = std::env::var("BACKUP_AUTH_SECRETS") {
+        println!("cargo:rustc-env=BACKUP_AUTH_SECRETS={}", auth);
+    }
+    if let Ok(region) = std::env::var("MY_AWS_REGION") {
+        println!("cargo:rustc-env=MY_AWS_REGION={}", region);
+    }
+    if let Ok(bucket) = std::env::var("AWS_S3_BUCKET") {
+        println!("cargo:rustc-env=AWS_S3_BUCKET={}", bucket);
+    }
+    if let Ok(url) = std::env::var("API_GATEWAY_URL") {
+        println!("cargo:rustc-env=API_GATEWAY_URL={}", url);
+    }
+    if let Ok(url) = std::env::var("API_GATEWAY_KEY_URL") {
+        println!("cargo:rustc-env=API_GATEWAY_KEY_URL={}", url);
+    }
+
     tauri_build::build()
 }
