@@ -608,7 +608,7 @@ const Settings = () => {
                             <Code size={18} className="tech-info-icon" />
                             <div>
                                 <p className="tech-info-label">Version</p>
-                                <p className="tech-info-value">1.6.0</p>
+                                <p className="tech-info-value">1.7.0</p>
                             </div>
                         </div>
 
