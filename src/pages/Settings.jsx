@@ -21,6 +21,11 @@ const Settings = () => {
     const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
     const [isRestoring, setIsRestoring] = useState(false);
     const [selectedBackup, setSelectedBackup] = useState(null);
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [passwordMode, setPasswordMode] = useState('setup');
+    const [backupPassword, setBackupPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [isPasswordSet, setIsPasswordSet] = useState(false);
     
     // Developer Mode State
     const [versionClicks, setVersionClicks] = useState(0);
@@ -28,6 +33,79 @@ const Settings = () => {
     const [pinInput, setPinInput] = useState('');
     const [isDevMode, setIsDevMode] = useState(false);
     const [dbKey, setDbKey] = useState('');
+
+    useEffect(() => {
+        const checkPassword = async () => {
+            try {
+                const pw = await invoke('get_backup_password');
+                setIsPasswordSet(!!pw);
+            } catch (e) {
+                setIsPasswordSet(false);
+            }
+        };
+        checkPassword();
+    }, []);
+
+    const handlePasswordSubmit = async () => {
+        if (passwordMode === 'setup') {
+            if (backupPassword.length < 6) {
+                toast.error('Password Too Short', 'Password must be at least 6 characters');
+                return;
+            }
+            if (backupPassword !== confirmPassword) {
+                toast.error('Password Mismatch', 'Passwords do not match');
+                return;
+            }
+            try {
+                await invoke('set_backup_password', { password: backupPassword });
+                setIsPasswordSet(true);
+                setShowPasswordModal(false);
+                toast.success('Password Set', 'Your backup password has been configured');
+            } catch (e) {
+                toast.error('Error', String(e));
+            }
+        } else {
+            try {
+                await invoke('set_backup_password', { password: backupPassword });
+                setShowPasswordModal(false);
+                toast.success('Password Verified', 'You can now restore backups');
+            } catch (e) {
+                toast.error('Invalid Password', 'Please enter the correct backup password');
+            }
+        }
+    };
+
+    const handleCloudBackup = async () => {
+        if (!isPasswordSet) {
+            setPasswordMode('setup');
+            setBackupPassword('');
+            setConfirmPassword('');
+            setShowPasswordModal(true);
+            return;
+        }
+        setIsSyncing(true);
+        try {
+            const result = await invoke('backup_now');
+            toast.success('Cloud Backup Successful', result);
+            fetchLatestBackupInfo();
+            fetchBackupList();
+        } catch (e) {
+            toast.error('Cloud Backup Failed', String(e));
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    const handleCloudRestore = async () => {
+        if (!isPasswordSet) {
+            setPasswordMode('verify');
+            setBackupPassword('');
+            setShowPasswordModal(true);
+            return;
+        }
+        await fetchBackupList();
+        setIsRestoreModalOpen(true);
+    };
 
     const fetchLatestBackupInfo = async () => {
         try {
@@ -144,24 +222,6 @@ const Settings = () => {
         } catch (e) {
             toast.error('Restore Failed', String(e));
         }
-    };
-
-    const handleCloudBackup = async () => {
-        setIsSyncing(true);
-        try {
-            const result = await invoke('backup_now');
-            toast.success('Cloud Backup Successful', result);
-            fetchLatestBackupInfo();
-        } catch (e) {
-            toast.error('Cloud Backup Failed', String(e));
-        } finally {
-            setIsSyncing(false);
-        }
-    };
-
-    const handleCloudRestore = async () => {
-        await fetchBackupList();
-        setIsRestoreModalOpen(true);
     };
 
     const handleRestoreConfirm = async () => {
@@ -679,6 +739,70 @@ const Settings = () => {
                 itemName="ALL local database data and encryption keys"
                 title="Reset Database"
             />
+
+            {/* Password Setup/Verify Modal */}
+            <Modal
+                isOpen={showPasswordModal}
+                onClose={() => setShowPasswordModal(false)}
+                title={passwordMode === 'setup' ? 'Set Backup Password' : 'Enter Backup Password'}
+                actions={
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                        <button className="btn-ghost" onClick={() => setShowPasswordModal(false)}>
+                            Cancel
+                        </button>
+                        <button className="btn-primary-glow" onClick={handlePasswordSubmit}>
+                            {passwordMode === 'setup' ? 'Set Password' : 'Verify'}
+                        </button>
+                    </div>
+                }
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {passwordMode === 'setup' ? (
+                        <>
+                            <div>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                    Create a backup password (used to encrypt backups)
+                                </label>
+                                <input
+                                    type="password"
+                                    className="form-input"
+                                    value={backupPassword}
+                                    onChange={(e) => setBackupPassword(e.target.value)}
+                                    placeholder="Enter password (min 6 chars)"
+                                    style={{ marginTop: '0.5rem' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                    Confirm password
+                                </label>
+                                <input
+                                    type="password"
+                                    className="form-input"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    placeholder="Confirm password"
+                                    style={{ marginTop: '0.5rem' }}
+                                />
+                            </div>
+                        </>
+                    ) : (
+                        <div>
+                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                Enter your backup password to restore
+                            </label>
+                            <input
+                                type="password"
+                                className="form-input"
+                                value={backupPassword}
+                                onChange={(e) => setBackupPassword(e.target.value)}
+                                placeholder="Enter backup password"
+                                style={{ marginTop: '0.5rem' }}
+                            />
+                        </div>
+                    )}
+                </div>
+            </Modal>
 
             {/* Restore Backup Modal */}
             <Modal

@@ -1,16 +1,7 @@
-use keyring::Entry;
 use rusqlite::{Connection, Result};
 use std::fs;
 use tauri::AppHandle;
 use tauri::Manager;
-use uuid::Uuid;
-
-const DB_KEY_ACCOUNT: &str = "database_encryption_key";
-const SERVICE_NAME: &str = "LittleFlowerIndustries-Backup";
-
-// Cache the key in memory to ensure same key is used throughout the session
-// Changed to Mutex to allow clearing/refreshing after a restore
-static CACHED_KEY: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
 
 pub fn get_db_path(app_handle: &AppHandle) -> std::path::PathBuf {
     app_handle
@@ -18,56 +9,6 @@ pub fn get_db_path(app_handle: &AppHandle) -> std::path::PathBuf {
         .app_data_dir()
         .expect("failed to get app data dir")
         .join("littleflower.db")
-}
-
-pub fn clear_cached_key() {
-    if let Ok(mut key_cache) = CACHED_KEY.lock() {
-        *key_cache = None;
-    }
-}
-
-pub fn get_or_create_db_key(app_handle: &AppHandle) -> Result<String, String> {
-    // 1. Check memory cache
-    if let Ok(key_cache) = CACHED_KEY.lock() {
-        if let Some(key) = &*key_cache {
-            return Ok(key.clone());
-        }
-    }
-
-    let app_dir = app_handle
-        .path()
-        .app_data_dir()
-        .expect("failed to get app data dir");
-    let key_file_path = app_dir.join("secret.key");
-
-    // 2. Try OS Keyring
-    let entry = Entry::new(SERVICE_NAME, DB_KEY_ACCOUNT).map_err(|e| e.to_string())?;
-    let key = match entry.get_password() {
-        Ok(k) => k,
-        Err(_) => {
-            // 3. Try Fallback Key File
-            if key_file_path.exists() {
-                fs::read_to_string(&key_file_path).map_err(|e| e.to_string())?
-            } else {
-                // 4. Generate New Key
-                let new_key = format!("{}-{}", Uuid::new_v4(), Uuid::new_v4()).replace("-", "");
-
-                // Try to save to keyring (might fail on some systems)
-                let _ = entry.set_password(&new_key);
-
-                // Save to fallback file
-                let _ = fs::write(&key_file_path, &new_key);
-
-                new_key
-            }
-        }
-    };
-
-    // Store in cache
-    if let Ok(mut key_cache) = CACHED_KEY.lock() {
-        *key_cache = Some(key.clone());
-    }
-    Ok(key)
 }
 
 pub fn ensure_tables(conn: &Connection) -> Result<(), String> {
@@ -207,6 +148,9 @@ pub fn ensure_tables(conn: &Connection) -> Result<(), String> {
     let _ = conn
         .execute("ALTER TABLE invoices ADD COLUMN pincode TEXT", [])
         .ok();
+    let _ = conn
+        .execute("ALTER TABLE invoices ADD COLUMN asn_no TEXT", [])
+        .ok();
 
     // Activity Logs
     conn.execute(
@@ -225,29 +169,30 @@ pub fn ensure_tables(conn: &Connection) -> Result<(), String> {
     Ok(())
 }
 
-pub fn open_encrypted_conn(app_handle: &AppHandle) -> Result<Connection, String> {
+pub fn open_db(app_handle: &AppHandle) -> Result<Connection, String> {
     let db_path = get_db_path(app_handle);
-    let key = get_or_create_db_key(app_handle)?;
 
-    let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
+    if db_path.exists() {
+        let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
 
-    // Apply encryption key
-    conn.pragma_update(None, "key", &key)
-        .map_err(|e| e.to_string())?;
+        let result: Result<i32, _> =
+            conn.query_row("SELECT count(*) FROM sqlite_master", [], |row| row.get(0));
 
-    // Test connection
-    match conn.query_row("SELECT count(*) FROM sqlite_master", [], |_| Ok(())) {
-        Ok(_) => {
-            ensure_tables(&conn)?;
-            Ok(conn)
-        }
-        Err(e) => {
-            Err(format!(
-                "Failed to decrypt database. The key might be incorrect or the database is corrupted. Error: {}", 
-                e
-            ))
+        match result {
+            Ok(_) => {
+                ensure_tables(&conn)?;
+                return Ok(conn);
+            }
+            Err(_) => {
+                drop(conn);
+                std::fs::remove_file(&db_path).map_err(|e| e.to_string())?;
+            }
         }
     }
+
+    let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
+    ensure_tables(&conn)?;
+    Ok(conn)
 }
 
 pub fn init_db(app_handle: &AppHandle) -> Result<Connection, String> {
@@ -260,7 +205,7 @@ pub fn init_db(app_handle: &AppHandle) -> Result<Connection, String> {
         fs::create_dir_all(&app_dir).expect("failed to create app data dir");
     }
 
-    open_encrypted_conn(app_handle)
+    open_db(app_handle)
 }
 
 // --- Activity Logging ---
@@ -572,6 +517,7 @@ pub struct Invoice {
     pub items_json: String,
     pub hsn_code: Option<String>,
     pub sac_code: Option<String>,
+    pub asn_no: Option<String>,
     pub state: Option<String>,
     pub state_code: Option<String>,
     pub pincode: Option<String>,
@@ -584,7 +530,7 @@ pub struct InvoiceWithCustomer {
 }
 
 pub fn get_invoices(conn: &Connection) -> Result<Vec<Invoice>> {
-    let mut stmt = conn.prepare("SELECT id, client_name, vendor_code, date, due_date, amount, status, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, items_json, hsn_code, sac_code, state, state_code, pincode FROM invoices")?;
+    let mut stmt = conn.prepare("SELECT id, client_name, vendor_code, date, due_date, amount, status, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, items_json, hsn_code, sac_code, state, state_code, pincode, asn_no FROM invoices")?;
     let iter = stmt.query_map([], |row| {
         Ok(Invoice {
             id: row_get_string(row, 0).unwrap_or_default(),
@@ -606,6 +552,7 @@ pub fn get_invoices(conn: &Connection) -> Result<Vec<Invoice>> {
             state: row_get_string(row, 16),
             state_code: row_get_string(row, 17),
             pincode: row_get_string(row, 18),
+            asn_no: row_get_string(row, 19),
         })
     })?;
     let mut invoices = Vec::new();
@@ -617,8 +564,8 @@ pub fn get_invoices(conn: &Connection) -> Result<Vec<Invoice>> {
 
 pub fn save_invoice(conn: &Connection, invoice: &Invoice) -> Result<()> {
     conn.execute(
-        "INSERT OR REPLACE INTO invoices (id, client_name, vendor_code, date, due_date, amount, status, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, items_json, hsn_code, sac_code, state, state_code, pincode) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)",
-        rusqlite::params![&invoice.id, &invoice.client_name, &invoice.vendor_code, &invoice.date, &invoice.due_date, &invoice.amount, &invoice.status, &invoice.dc_no, &invoice.dc_date, &invoice.po_no, &invoice.po_date, &invoice.transport_mode, &invoice.invoice_type, &invoice.items_json, &invoice.hsn_code, &invoice.sac_code, &invoice.state, &invoice.state_code, &invoice.pincode],
+        "INSERT OR REPLACE INTO invoices (id, client_name, vendor_code, date, due_date, amount, status, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, items_json, hsn_code, sac_code, state, state_code, pincode, asn_no) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20)",
+        rusqlite::params![&invoice.id, &invoice.client_name, &invoice.vendor_code, &invoice.date, &invoice.due_date, &invoice.amount, &invoice.status, &invoice.dc_no, &invoice.dc_date, &invoice.po_no, &invoice.po_date, &invoice.transport_mode, &invoice.invoice_type, &invoice.items_json, &invoice.hsn_code, &invoice.sac_code, &invoice.state, &invoice.state_code, &invoice.pincode, &invoice.asn_no],
     )?;
     log_activity(
         conn,
@@ -631,7 +578,7 @@ pub fn save_invoice(conn: &Connection, invoice: &Invoice) -> Result<()> {
 }
 
 pub fn get_invoice(conn: &Connection, id: &str) -> Result<Invoice> {
-    let mut stmt = conn.prepare("SELECT id, client_name, vendor_code, date, amount, status, items_json, due_date, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, hsn_code, sac_code, state, state_code, pincode FROM invoices WHERE id = ?1")?;
+    let mut stmt = conn.prepare("SELECT id, client_name, vendor_code, date, amount, status, items_json, due_date, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, hsn_code, sac_code, state, state_code, pincode, asn_no FROM invoices WHERE id = ?1")?;
     let invoice = stmt.query_row([id], |row| {
         Ok(Invoice {
             id: row_get_string(row, 0).unwrap_or_default(),
@@ -653,6 +600,7 @@ pub fn get_invoice(conn: &Connection, id: &str) -> Result<Invoice> {
             state: row_get_string(row, 16),
             state_code: row_get_string(row, 17),
             pincode: row_get_string(row, 18),
+            asn_no: row_get_string(row, 19),
         })
     })?;
     Ok(invoice)
@@ -732,24 +680,11 @@ pub fn import_db(app_handle: &AppHandle, source_path: &std::path::Path) -> Resul
 
 pub fn reset_database(app_handle: &AppHandle) -> Result<(), String> {
     let db_path = get_db_path(app_handle);
-    let app_dir = app_handle
-        .path()
-        .app_data_dir()
-        .expect("failed to get app data dir");
-    let key_path = app_dir.join("secret.key");
 
-    // Clear memory cache first
-    clear_cached_key();
-
-    // Delete files if they exist
     if db_path.exists() {
         fs::remove_file(&db_path).map_err(|e| e.to_string())?;
     }
-    if key_path.exists() {
-        fs::remove_file(&key_path).map_err(|e| e.to_string())?;
-    }
 
-    // Re-initialize a fresh database
     init_db(app_handle)?;
 
     Ok(())

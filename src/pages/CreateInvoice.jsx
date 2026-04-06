@@ -153,6 +153,7 @@ const CreateInvoice = () => {
         invoice_type: '',
         hsn_code: '',
         sac_code: '',
+        asn_no: '',
         state: 'Tamilnadu',
         state_code: '33',
         pincode: '',
@@ -196,6 +197,7 @@ const CreateInvoice = () => {
                         invoice_type: invData.invoice_type || '',
                         hsn_code: invData.hsn_code || '',
                         sac_code: invData.sac_code || '',
+                        asn_no: invData.asn_no || '',
                         state: invData.state || client?.state || 'Tamilnadu',
                         state_code: invData.state_code || client?.state_code || '33',
                         pincode: invData.pincode || client?.pincode || ''
@@ -319,6 +321,7 @@ const CreateInvoice = () => {
                     items_json: JSON.stringify(invoice.items),
                     hsn_code: invoice.hsn_code,
                     sac_code: invoice.sac_code,
+                    asn_no: invoice.asn_no,
                     state: invoice.state,
                     state_code: invoice.state_code,
                     pincode: invoice.pincode
@@ -509,14 +512,14 @@ const CreateInvoice = () => {
                             onChange={e => setInvoice({ ...invoice, state: e.target.value })} />
                     </div>
                     <div className="form-group">
-                        <label>State Code</label>
-                        <input type="text" className="form-input" value={invoice.state_code}
-                            onChange={e => setInvoice({ ...invoice, state_code: e.target.value })} />
-                    </div>
-                    <div className="form-group">
                         <label>Pincode</label>
                         <input type="text" className="form-input" value={invoice.pincode}
                             onChange={e => setInvoice({ ...invoice, pincode: e.target.value })} />
+                    </div>
+                    <div className="form-group">
+                        <label>State Code</label>
+                        <input type="text" className="form-input" value={invoice.state_code}
+                            onChange={e => setInvoice({ ...invoice, state_code: e.target.value })} />
                     </div>
                     <div className="form-group">
                         <label>Your DC No</label>
@@ -589,6 +592,11 @@ const CreateInvoice = () => {
                                     setInvoice({ ...invoice, invoice_type: types.join(', ') });
                                 }} /> Sale (HSN)
                         </label>
+                    </div>
+                    <div className="form-group">
+                        <label>ASN No</label>
+                        <input type="text" className="form-input" value={invoice.asn_no}
+                            onChange={e => setInvoice({ ...invoice, asn_no: e.target.value })} placeholder="Enter ASN No" />
                     </div>
                     <div className="form-group">
                         <label>SGST Rate (%)</label>
@@ -752,6 +760,7 @@ const CreateInvoice = () => {
             {/* Print Layout */}
             <div className="print-container-wrapper">
                 <div className="invoice-paper" ref={invoiceRef}>
+                    <div className="inv-top-section">
                     <div style={{ textAlign: 'center', marginBottom: '10px' }}>
                         <h2 style={{ fontSize: '1.5rem', margin: 0, textTransform: 'uppercase', letterSpacing: '2px', borderBottom: '2px solid #000', display: 'inline-block', paddingBottom: '2px' }}>INVOICE</h2>
                     </div>
@@ -765,7 +774,7 @@ const CreateInvoice = () => {
                         </div>
                         <div className="gst-section">
                             <p>GSTIN: 33AHPPG8152P1ZR</p>
-                            <p>Cell: 9444104884</p>
+                            <p style={{ fontSize: '13px' }}>Cell: 9444104884</p>
                         </div>
                     </div>
 
@@ -776,11 +785,9 @@ const CreateInvoice = () => {
                             <h3>Details of Receiver / Billed to:</h3>
                             <p><strong>Name:</strong> {invoice.client_details?.name || '_________________'}</p>
                             <p><strong>Address:</strong> {invoice.client_details?.address || '_________________'}</p>
-                            <div className="flex justify-between mt-2">
-                                <p><strong>GSTIN:</strong> {invoice.client_details?.gstin || '________'}</p>
-                                <p style={{ paddingRight: '20px' }}><strong>Pincode:</strong> {invoice.pincode || '______'}</p>
-                            </div>
+                            <p><strong>GSTIN:</strong> {invoice.client_details?.gstin || '________'}</p>
                             <p><strong>State:</strong> {invoice.state || '__________'} ({invoice.state_code || '__'})</p>
+                            <p style={{ paddingRight: '20px' }}><strong>Pincode:</strong> {invoice.pincode || '______'}</p>
                         </div>
                         <div className="inv-details">
                             <div className="row"><span>Invoice No:</span> <span>{invoice.id}</span></div>
@@ -790,7 +797,6 @@ const CreateInvoice = () => {
                             <div className="row"><span>P.O No:</span> <span>{invoice.po_no || '-'}</span></div>
                             <div className="row"><span>P.O Date:</span> <span>{invoice.po_date || '-'}</span></div>
                             <div className="row"><span>Vendor Code:</span> <span>{invoice.vendor_code || '-'}</span></div>
-                            <div className="row"><span>Transport:</span> <span>{invoice.transport_mode || '-'}</span></div>
                             <div className="row"><span>SAC Code:</span> <span>{invoice.sac_code || '-'}</span></div>
                             <div className="row"><span>HSN Code:</span> <span>{invoice.hsn_code || '-'}</span></div>
                             <div className="row">
@@ -805,19 +811,21 @@ const CreateInvoice = () => {
                                     {invoice.invoice_type && invoice.invoice_type.includes('Sale') && '✓'}
                                 </span>
                             </div>
+                            <div className="row"><span>Transport:</span> <span>{invoice.transport_mode || '-'}</span></div>
                         </div>
+                    </div>
                     </div>
 
                     <table className="inv-table">
                         <thead>
                             <tr>
-                                <th style={{ width: '40px', textAlign: 'center' }}>S.No</th>
-                                <th style={{ width: '130px', textAlign: 'center' }}>Part Name</th>
+                                <th style={{ width: '30px', textAlign: 'center' }}>S.No</th>
+                                <th style={{ width: '140px', textAlign: 'center' }}>Part Name</th>
                                 <th style={{ width: '90px', textAlign: 'center' }}>Part Number</th>
                                 <th style={{ width: '80px', textAlign: 'center' }}>Process</th>
-                                <th style={{ width: '50px', textAlign: 'center' }}>Qty</th>
-                                <th style={{ width: '70px', textAlign: 'center' }}>Rate</th>
-                                <th style={{ textAlign: 'center' }}>Amount</th>
+                                <th style={{ width: '35px', textAlign: 'center' }}>Qty</th>
+                                <th style={{ width: '55px', textAlign: 'center', padding: '0px' }}>Rate</th>
+                                <th style={{ width: '55px', textAlign: 'center', padding: '2px' }}>Total</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -828,11 +836,11 @@ const CreateInvoice = () => {
                                     <td style={{ textAlign: 'center' }}>{item.part_number || '-'}</td>
                                     <td style={{ textAlign: 'center' }}>{item.process || '-'}</td>
                                     <td style={{ textAlign: 'center' }}>{item.qty}</td>
-                                    <td style={{ textAlign: 'center' }}>₹{item.rate}</td>
-                                    <td style={{ textAlign: 'center' }}>₹{(item.amount || 0).toFixed(2)}</td>
+                                    <td style={{ textAlign: 'center', padding: '0px' }}>₹{item.rate}</td>
+                                    <td style={{ textAlign: 'center', padding: '2px' }}>₹{(item.amount || 0).toFixed(2)}</td>
                                 </tr>
                             ))}
-                            {Array.from({ length: Math.max(0, 15 - invoice.items.length) }).map((_, i) => (
+                            {Array.from({ length: Math.max(0, 11 - invoice.items.length) }).map((_, i) => (
                                 <tr key={`empty-${i}`} className="empty-row">
                                     <td>&nbsp;</td>
                                     <td>&nbsp;</td>
@@ -849,13 +857,13 @@ const CreateInvoice = () => {
                     <div className="inv-footer-section">
                         <div className="left-section">
                             <div className="amount-words" style={{ marginTop: '10px' }}>
-                                <p><strong>Total Invoice Amount in Words:</strong></p>
-                                <p style={{ textTransform: 'capitalize' }}>{amountToWords(totals.total)}</p>
-                                <p style={{ fontStyle: 'italic', fontWeight: 'bold', marginTop: '10px', fontSize: '1.2rem' }}>Received the goods in good condition</p>
+                                {invoice.asn_no && <p style={{ fontSize: '14px' }}><strong>ASN No:</strong> {invoice.asn_no}</p>}
+                                <p style={{ marginTop: invoice.asn_no ? '10px' : '0px', fontSize: '14px' }}><strong>Total Invoice Amount in Words:</strong></p>
+                                <p style={{ textTransform: 'capitalize', fontWeight: 'bold', fontSize: '14px' }}>{amountToWords(totals.total)}</p>
                             </div>
                         </div>
                         <div className="totals-section">
-                            <div className="row"><span>Total Before Tax</span><span>₹{totals.subtotal.toFixed(2)}</span></div>
+                            <div className="row" style={{ paddingTop: '8px' }}><span>Total Before Tax</span><span>₹{totals.subtotal.toFixed(2)}</span></div>
                             <div className="row">
                                 <span>CGST ({taxRates.cgst}%)</span>
                                 <span>₹{totals.cgst.toFixed(2)}</span>
@@ -869,8 +877,11 @@ const CreateInvoice = () => {
                     </div>
 
                     <div className="signature-section">
+                        <div className="received-text" style={{ marginLeft: '10px' }}>
+                            <p style={{ fontStyle: 'italic', fontWeight: 'bold', fontSize: '22px' }}>Received in good condition</p>
+                        </div>
                         <div className="sign-box" style={{ marginLeft: 'auto', marginRight: '50px' }}>
-                            <p style={{ fontWeight: 'bold', fontSize: '14px' }}>For LITTLE FLOWER INDUSTRIES</p>
+                            <p style={{ fontWeight: 'bold', fontSize: '16px' }}>For LITTLE FLOWER INDUSTRIES</p>
                             <br /><br />
                             <p>Authorised Signature</p>
                         </div>
@@ -879,13 +890,14 @@ const CreateInvoice = () => {
 
 
                 <style>{`
-                .invoice-paper { background: white; color: black; width: 210mm; min-height: 297mm; padding: 10mm; margin: 0 auto; border: 1px solid #ddd; font-family: 'Times New Roman', serif; position: relative; }
-                .inv-header { text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 5px; position: relative; }
+                .invoice-paper { background: white; color: black; width: 200mm; min-height: 297mm; padding: 10mm; margin: 0 auto; border: 1px solid #ddd; font-family: 'Times New Roman', serif; position: relative; }
+                .inv-top-section { border: 1px solid black; margin-bottom: 0; padding: 5px; }
+                .inv-header { text-align: center; border-bottom: 1px solid black; padding-bottom: 10px; margin-bottom: 5px; position: relative; }
                 .logo-section { position: absolute; left: 0; top: 0; }
                 .logo-img { width: 80px; height: auto; max-height: 80px; object-fit: contain; }
                 .company-details h1 { font-size: 22px; font-weight: bold; margin: 0; text-transform: uppercase; color: black; }
-                .company-details p { margin: 2px 0; font-size: 13px; }
-                .gst-section { position: absolute; right: 0; top: 0; text-align: right; font-size: 13px; font-weight: bold; }
+                .company-details p { margin: 2px 0; font-size: 11px; }
+                .gst-section { position: absolute; right: 0; top: 0; text-align: right; font-size: 11px; font-weight: bold; }
                 .inv-meta-grid { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid black; margin-bottom: 0; }
                 .bill-to { padding: 5px; border-right: 1px solid black; font-size: 14px; }
                 .inv-details { font-size: 14px; }
