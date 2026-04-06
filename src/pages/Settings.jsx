@@ -616,7 +616,7 @@ const Settings = () => {
                             <Calendar size={18} className="tech-info-icon" style={{ color: '#f59e0b' }} />
                             <div>
                                 <p className="tech-info-label">Build Date</p>
-                                <p className="tech-info-value">March 2026</p>
+                                <p className="tech-info-value">April 2026</p>
                             </div>
                         </div>
                     </div>
