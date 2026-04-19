@@ -37,6 +37,12 @@ pub fn ensure_tables(conn: &Connection) -> Result<(), String> {
     let _ = conn
         .execute("ALTER TABLE inventory ADD COLUMN po_date TEXT", [])
         .ok();
+    let _ = conn
+        .execute("ALTER TABLE inventory ADD COLUMN created_at TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE inventory ADD COLUMN updated_at TEXT", [])
+        .ok();
 
     // Customers
     conn.execute(
@@ -53,7 +59,8 @@ pub fn ensure_tables(conn: &Connection) -> Result<(), String> {
             vendor_code TEXT,
             pincode TEXT,
             orders INTEGER DEFAULT 0,
-            total_value REAL DEFAULT 0.0
+            total_value REAL DEFAULT 0.0,
+            created_at TEXT
         )",
         [],
     )
@@ -75,6 +82,9 @@ pub fn ensure_tables(conn: &Connection) -> Result<(), String> {
         .ok();
     let _ = conn
         .execute("ALTER TABLE customers ADD COLUMN pincode TEXT", [])
+        .ok();
+    let _ = conn
+        .execute("ALTER TABLE customers ADD COLUMN created_at TEXT", [])
         .ok();
 
     // Invoices
@@ -98,7 +108,8 @@ pub fn ensure_tables(conn: &Connection) -> Result<(), String> {
             sac_code TEXT,
             state TEXT,
             state_code TEXT,
-            pincode TEXT
+            pincode TEXT,
+            asn_no TEXT
         )",
         [],
     )
@@ -255,11 +266,21 @@ pub fn get_activity_logs(conn: &Connection) -> Result<Vec<ActivityLog>> {
 
 // --- Dashboard Stats ---
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
+pub struct ChartPoint {
+    pub name: String,
+    pub val: i32,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct DashboardStats {
     pub revenue: f64,
     pub customers: i32,
     pub total_invoices: i32,
+    pub prev_month_invoices: i32,
+    pub prev_total_customers: i32,
     pub active_orders: i32,
+    pub invoice_history: Vec<ChartPoint>,
+    pub customer_history: Vec<ChartPoint>,
 }
 
 pub fn get_dashboard_stats(conn: &Connection) -> Result<DashboardStats> {
@@ -268,29 +289,77 @@ pub fn get_dashboard_stats(conn: &Connection) -> Result<DashboardStats> {
             r.get(0)
         })
         .unwrap_or(0.0);
+    
     let customers: i32 = conn
         .query_row("SELECT COUNT(*) FROM customers", [], |r| r.get(0))
         .unwrap_or(0);
-    // Modified to count only current month invoices
+
+    let prev_total_customers: i32 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM customers WHERE created_at < date(\"now\", \"-30 days\")",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(customers);
+
     let total_invoices: i32 = conn
         .query_row(
-            "SELECT COUNT(*) FROM invoices WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')",
+            "SELECT COUNT(*) FROM invoices WHERE strftime(\"%Y-%m\", date) = strftime(\"%Y-%m\", \"now\")",
             [],
             |r| r.get(0),
         )
         .unwrap_or(0);
+
+    let prev_month_invoices: i32 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM invoices WHERE strftime(\"%Y-%m\", date) = strftime(\"%Y-%m\", \"now\", \"-1 month\")",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+
     let active_orders: i32 = conn
         .query_row(
-            "SELECT COUNT(*) FROM invoices WHERE status = 'Pending'",
+            "SELECT COUNT(*) FROM invoices WHERE status = \"Pending\"",
             [],
             |r| r.get(0),
         )
         .unwrap_or(0);
+
+    // Fetch 6-month Invoice History (Monthly)
+    let mut stmt = conn.prepare("
+        SELECT strftime('%Y-%m', date) as month_str, count(*) 
+        FROM invoices 
+        WHERE date >= date('now', '-6 months') 
+        GROUP BY month_str ORDER BY month_str
+    ")?;
+    let invoice_history = stmt.query_map([], |row| {
+        let date_str: String = row.get(0)?;
+        // Convert '2024-03' to just 'Mar' or similar in JS, for now keep the string
+        Ok(ChartPoint { name: date_str, val: row.get(1)? })
+    })?.filter_map(|e| e.ok()).collect();
+
+    // Fetch 6-month Customer History (Cumulative growth)
+    let mut stmt = conn.prepare("
+        SELECT strftime('%Y-%m', created_at) as month_str, count(*) 
+        FROM customers 
+        WHERE created_at >= date('now', '-6 months') 
+        GROUP BY month_str ORDER BY month_str
+    ")?;
+    let customer_history = stmt.query_map([], |row| {
+        let date_str: String = row.get(0)?;
+        Ok(ChartPoint { name: date_str, val: row.get(1)? })
+    })?.filter_map(|e| e.ok()).collect();
+
     Ok(DashboardStats {
         revenue,
         customers,
         total_invoices,
+        prev_month_invoices,
+        prev_total_customers,
         active_orders,
+        invoice_history,
+        customer_history,
     })
 }
 
@@ -301,7 +370,7 @@ pub struct RevenuePoint {
 }
 
 pub fn get_revenue_history(conn: &Connection) -> Result<Vec<RevenuePoint>> {
-    let mut stmt = conn.prepare("SELECT date, SUM(amount) FROM invoices WHERE date >= date('now', '-30 days') GROUP BY date ORDER BY date")?;
+    let mut stmt = conn.prepare("SELECT date, SUM(amount) FROM invoices WHERE date >= date(\"now\", \"-30 days\") GROUP BY date ORDER BY date")?;
     let iter = stmt.query_map([], |row| {
         Ok(RevenuePoint {
             date: row.get(0)?,
@@ -315,7 +384,7 @@ pub fn get_revenue_history(conn: &Connection) -> Result<Vec<RevenuePoint>> {
     Ok(points)
 }
 
-// --- Inventory (Simplified) ---
+// --- Inventory ---
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct InventoryItem {
     pub id: Option<i64>,
@@ -325,9 +394,10 @@ pub struct InventoryItem {
     pub process: String,
     pub po_no: Option<String>,
     pub po_date: Option<String>,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
 }
 
-// Helper to get string even if stored as number in SQLite
 fn row_get_string(row: &rusqlite::Row, index: usize) -> Option<String> {
     match row.get::<_, rusqlite::types::Value>(index) {
         Ok(rusqlite::types::Value::Text(s)) => Some(s),
@@ -338,8 +408,7 @@ fn row_get_string(row: &rusqlite::Row, index: usize) -> Option<String> {
 }
 
 pub fn get_inventory(conn: &Connection) -> Result<Vec<InventoryItem>> {
-    let mut stmt = conn
-        .prepare("SELECT id, name, part_number, price, process, po_no, po_date FROM inventory")?;
+    let mut stmt = conn.prepare("SELECT id, name, part_number, price, process, po_no, po_date, created_at, updated_at FROM inventory")?;
     let item_iter = stmt.query_map([], |row| {
         Ok(InventoryItem {
             id: row.get(0).ok(),
@@ -349,6 +418,8 @@ pub fn get_inventory(conn: &Connection) -> Result<Vec<InventoryItem>> {
             process: row_get_string(row, 4).unwrap_or_default(),
             po_no: row_get_string(row, 5),
             po_date: row_get_string(row, 6),
+            created_at: row_get_string(row, 7),
+            updated_at: row_get_string(row, 8),
         })
     })?;
     let mut items = Vec::new();
@@ -361,40 +432,20 @@ pub fn get_inventory(conn: &Connection) -> Result<Vec<InventoryItem>> {
 }
 
 pub fn add_item(conn: &Connection, item: &InventoryItem) -> Result<()> {
+    let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
     conn.execute(
-        "INSERT INTO inventory (name, part_number, price, process, po_no, po_date) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        (
-            &item.name,
-            &item.part_number,
-            &item.price,
-            &item.process,
-            &item.po_no,
-            &item.po_date,
-        ),
+        "INSERT INTO inventory (name, part_number, price, process, po_no, po_date, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        (&item.name, &item.part_number, &item.price, &item.process, &item.po_no, &item.po_date, &now, &now),
     )?;
-
-    log_activity(
-        conn,
-        "Created",
-        "Product",
-        &item.name,
-        &format!("Added Part: {:?}", item.part_number),
-    )?;
+    log_activity(conn, "Created", "Product", &item.name, &format!("Added Part: {:?}", item.part_number))?;
     Ok(())
 }
 
 pub fn update_item(conn: &Connection, item: &InventoryItem) -> Result<()> {
+    let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
     conn.execute(
-        "UPDATE inventory SET name=?1, part_number=?2, price=?3, process=?4, po_no=?5, po_date=?6 WHERE id=?7",
-        (
-            &item.name,
-            &item.part_number,
-            &item.price,
-            &item.process,
-            &item.po_no,
-            &item.po_date,
-            &item.id,
-        ),
+        "UPDATE inventory SET name=?1, part_number=?2, price=?3, process=?4, po_no=?5, po_date=?6, updated_at=?7 WHERE id=?8",
+        (&item.name, &item.part_number, &item.price, &item.process, &item.po_no, &item.po_date, &now, &item.id),
     )?;
     log_activity(conn, "Updated", "Product", &item.name, "Updated details")?;
     Ok(())
@@ -402,13 +453,7 @@ pub fn update_item(conn: &Connection, item: &InventoryItem) -> Result<()> {
 
 pub fn delete_item(conn: &Connection, id: i64) -> Result<()> {
     conn.execute("DELETE FROM inventory WHERE id = ?1", [&id])?;
-    log_activity(
-        conn,
-        "Deleted",
-        "Product",
-        &id.to_string(),
-        "Deleted product",
-    )?;
+    log_activity(conn, "Deleted", "Product", &id.to_string(), "Deleted product")?;
     Ok(())
 }
 
@@ -457,17 +502,12 @@ pub fn get_customers(conn: &Connection) -> Result<Vec<Customer>> {
 }
 
 pub fn add_customer(conn: &Connection, customer: &Customer) -> Result<()> {
+    let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
     conn.execute(
-        "INSERT INTO customers (name, contact, email, phone, address, gstin, state, state_code, vendor_code, pincode, orders, total_value) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, 0.0)",
-        (&customer.name, &customer.contact, &customer.email, &customer.phone, &customer.address, &customer.gstin, &customer.state, &customer.state_code, &customer.vendor_code, &customer.pincode),
+        "INSERT INTO customers (name, contact, email, phone, address, gstin, state, state_code, vendor_code, pincode, orders, total_value, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, 0.0, ?11)",
+        (&customer.name, &customer.contact, &customer.email, &customer.phone, &customer.address, &customer.gstin, &customer.state, &customer.state_code, &customer.vendor_code, &customer.pincode, &now),
     )?;
-    log_activity(
-        conn,
-        "Created",
-        "Customer",
-        &customer.name,
-        "New customer added",
-    )?;
+    log_activity(conn, "Created", "Customer", &customer.name, "New customer added")?;
     Ok(())
 }
 
@@ -476,25 +516,13 @@ pub fn update_customer(conn: &Connection, customer: &Customer) -> Result<()> {
         "UPDATE customers SET name=?1, contact=?2, email=?3, phone=?4, address=?5, gstin=?6, state=?7, state_code=?8, vendor_code=?9, pincode=?10 WHERE id=?11",
         (&customer.name, &customer.contact, &customer.email, &customer.phone, &customer.address, &customer.gstin, &customer.state, &customer.state_code, &customer.vendor_code, &customer.pincode, &customer.id),
     )?;
-    log_activity(
-        conn,
-        "Updated",
-        "Customer",
-        &customer.name,
-        "Updated customer details",
-    )?;
+    log_activity(conn, "Updated", "Customer", &customer.name, "Updated customer details")?;
     Ok(())
 }
 
 pub fn delete_customer(conn: &Connection, id: i64) -> Result<()> {
     conn.execute("DELETE FROM customers WHERE id = ?1", [&id])?;
-    log_activity(
-        conn,
-        "Deleted",
-        "Customer",
-        &id.to_string(),
-        "Deleted customer",
-    )?;
+    log_activity(conn, "Deleted", "Customer", &id.to_string(), "Deleted customer")?;
     Ok(())
 }
 
@@ -567,13 +595,7 @@ pub fn save_invoice(conn: &Connection, invoice: &Invoice) -> Result<()> {
         "INSERT OR REPLACE INTO invoices (id, client_name, vendor_code, date, due_date, amount, status, dc_no, dc_date, po_no, po_date, transport_mode, invoice_type, items_json, hsn_code, sac_code, state, state_code, pincode, asn_no) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20)",
         rusqlite::params![&invoice.id, &invoice.client_name, &invoice.vendor_code, &invoice.date, &invoice.due_date, &invoice.amount, &invoice.status, &invoice.dc_no, &invoice.dc_date, &invoice.po_no, &invoice.po_date, &invoice.transport_mode, &invoice.invoice_type, &invoice.items_json, &invoice.hsn_code, &invoice.sac_code, &invoice.state, &invoice.state_code, &invoice.pincode, &invoice.asn_no],
     )?;
-    log_activity(
-        conn,
-        "Saved",
-        "Invoice",
-        &invoice.id,
-        &format!("Saved invoice for {}", invoice.client_name),
-    )?;
+    log_activity(conn, "Saved", "Invoice", &invoice.id, &format!("Saved invoice for {}", invoice.client_name))?;
     Ok(())
 }
 
@@ -655,13 +677,7 @@ pub fn update_invoice_status(conn: &Connection, id: &str, status: &str) -> Resul
         "UPDATE invoices SET status = ?1 WHERE id = ?2",
         [status, id],
     )?;
-    log_activity(
-        conn,
-        "Updated",
-        "Invoice",
-        id,
-        &format!("Status changed to {}", status),
-    )?;
+    log_activity(conn, "Updated", "Invoice", id, &format!("Status changed to {}", status))?;
     Ok(())
 }
 
@@ -673,7 +689,6 @@ pub fn export_db(app_handle: &AppHandle, target_path: &std::path::Path) -> Resul
 
 pub fn import_db(app_handle: &AppHandle, source_path: &std::path::Path) -> Result<(), String> {
     let target_path = get_db_path(app_handle);
-    // Ensure database is not locked (might need careful handling in a real app)
     std::fs::copy(source_path, target_path).map_err(|e| e.to_string())?;
     Ok(())
 }

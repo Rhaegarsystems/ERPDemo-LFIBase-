@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Filter, Package } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import GlassTable from '../components/GlassTable';
-import Modal from '../components/Modal';
+import FormSideSheet from '../components/FormSideSheet';
 import DetailViewModal from '../components/DetailViewModal';
+import FilterSideSheet from '../components/FilterSideSheet';
 import { useToast } from '../components/ToastProvider';
 import { useConfirmToast } from '../components/ConfirmToastProvider';
 import '../styles/PageCommon.css';
@@ -29,6 +30,16 @@ const Inventory = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    process: '',
+    priceMin: '',
+    priceMax: '',
+    createdFrom: '',
+    createdTo: '',
+    modifiedFrom: '',
+    modifiedTo: ''
+  });
   const [filteredItems, setFilteredItems] = useState([]);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const toast = useToast();
@@ -63,18 +74,46 @@ const Inventory = () => {
   }, []);
 
   useEffect(() => {
-    if (!searchTerm.trim()) {
-      setFilteredItems(items);
-    } else {
+    let result = items;
+    if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
-      const filtered = items.filter(item => 
+      result = result.filter(item => 
         (item.name && item.name.toLowerCase().includes(term)) ||
         (item.part_number && item.part_number.toLowerCase().includes(term)) ||
         (item.process && item.process.toLowerCase().includes(term))
       );
-      setFilteredItems(filtered);
     }
-  }, [searchTerm, items]);
+    if (filters.process) {
+      result = result.filter(item => item.process === filters.process);
+    }
+    if (filters.priceMin) {
+      result = result.filter(item => item.price >= parseFloat(filters.priceMin));
+    }
+    if (filters.priceMax) {
+      result = result.filter(item => item.price <= parseFloat(filters.priceMax));
+    }
+    if (filters.createdFrom || filters.createdTo) {
+      result = result.filter(item => {
+        if (!item.created_at) return false;
+        const created = item.created_at.split(' ')[0];
+        if (filters.createdFrom && created < filters.createdFrom) return false;
+        if (filters.createdTo && created > filters.createdTo) return false;
+        return true;
+      });
+    }
+    if (filters.modifiedFrom || filters.modifiedTo) {
+      result = result.filter(item => {
+        if (!item.updated_at) return false;
+        const modified = item.updated_at.split(' ')[0];
+        if (filters.modifiedFrom && modified < filters.modifiedFrom) return false;
+        if (filters.modifiedTo && modified > filters.modifiedTo) return false;
+        return true;
+      });
+    }
+    setFilteredItems(result);
+  }, [searchTerm, filters, items]);
+
+  const uniqueProcesses = [...new Set(items.map(item => item.process).filter(Boolean))];
 
   // Simplified columns - Removed Stock from here as well, and put Part Number first
   const columns = [
@@ -154,16 +193,16 @@ const Inventory = () => {
     { key: 'po_no', label: 'PO No' },
     { key: 'po_date', label: 'PO Date' },
     { key: 'price', label: 'Unit Price', render: (val) => `₹${val?.toFixed(2) || '0.00'}` },
+    { key: 'created_at', label: 'Created on' },
+    { key: 'updated_at', label: 'Modified on' },
   ];
 
   return (
     <div className="page-container">
-      <header className="page-header">
-        <div>
-          <h1 className="page-title">
-            Parts
-          </h1>
-          <p className="page-subtitle">Manage your parts.</p>
+      <header className="dashboard-header" style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 0 }}>
+        <div style={{ marginTop: 0 }}>
+          <h1 className="greeting-text" style={{ marginTop: 0 }}>Parts</h1>
+          <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-muted)', fontSize: '1.1rem' }}>Manage your parts</p>
         </div>
         <button className="btn-primary-glow" onClick={() => {
           setNewItem({ id: null, name: '', part_number: '', price: 0.0, process: '', po_no: '', po_date: '' });
@@ -183,7 +222,7 @@ const Inventory = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <button className="btn-glass">
+        <button className="btn-glass" onClick={() => setIsFilterOpen(true)}>
           <Filter size={18} /> Filter
         </button>
       </div>
@@ -203,7 +242,7 @@ const Inventory = () => {
         />
       )}
 
-      <Modal
+      <FormSideSheet
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={newItem.id ? "Edit Product" : "Add New Product"}
@@ -224,64 +263,58 @@ const Inventory = () => {
             placeholder="e.g. Steel Pipe"
           />
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <div className="form-group" style={{ flex: 1 }}>
-            <label>Part Number</label>
-            <input
-              type="text"
-              className="form-input"
-              value={newItem.part_number}
-              onChange={(e) => setNewItem({ ...newItem, part_number: e.target.value })}
-              placeholder="e.g. 1001"
-            />
-          </div>
-          <div className="form-group" style={{ flex: 1 }}>
-            <label>Process</label>
-            <input
-              type="text"
-              className="form-input"
-              value={newItem.process}
-              onChange={(e) => setNewItem({ ...newItem, process: e.target.value })}
-              placeholder="e.g. Casting"
-            />
-          </div>
+        <div className="form-group">
+          <label>Part Number</label>
+          <input
+            type="text"
+            className="form-input"
+            value={newItem.part_number}
+            onChange={(e) => setNewItem({ ...newItem, part_number: e.target.value })}
+            placeholder="e.g. 1001"
+          />
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <div className="form-group" style={{ flex: 1 }}>
-            <label>Unit Price (₹)</label>
-            <input
-              type="number"
-              step="0.01"
-              className="form-input"
-              value={newItem.price}
-              onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
-              placeholder="0.00"
-            />
-          </div>
+        <div className="form-group">
+          <label>Process</label>
+          <input
+            type="text"
+            className="form-input"
+            value={newItem.process}
+            onChange={(e) => setNewItem({ ...newItem, process: e.target.value })}
+            placeholder="e.g. Casting"
+          />
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <div className="form-group" style={{ flex: 1 }}>
-            <label>PO Number</label>
-            <input
-              type="text"
-              className="form-input"
-              value={newItem.po_no}
-              onChange={(e) => setNewItem({ ...newItem, po_no: e.target.value })}
-              placeholder="e.g. PO/2024/001"
-            />
-          </div>
-          <div className="form-group" style={{ flex: 1 }}>
-            <label>PO Date</label>
-            <input
+        <div className="form-group">
+          <label>Unit Price (₹)</label>
+          <input
+            type="number"
+            step="0.01"
+            className="form-input"
+            value={newItem.price}
+            onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
+            placeholder="0.00"
+          />
+        </div>
+        <div className="form-group">
+          <label>PO Number</label>
+          <input
+            type="text"
+            className="form-input"
+            value={newItem.po_no}
+            onChange={(e) => setNewItem({ ...newItem, po_no: e.target.value })}
+            placeholder="e.g. PO/2024/001"
+          />
+        </div>
+        <div className="form-group">
+          <label>PO Date</label>
+<input
               type="text"
               className="form-input"
               value={newItem.po_date}
               onChange={(e) => setNewItem({ ...newItem, po_date: formatDateInput(e.target.value) })}
               placeholder="DD-MM-YYYY"
             />
-          </div>
         </div>
-      </Modal>
+      </FormSideSheet>
 
       <DetailViewModal
         isOpen={isDetailModalOpen}
@@ -289,6 +322,15 @@ const Inventory = () => {
         title="Part Details"
         data={selectedItem}
         fields={detailFields}
+      />
+
+      <FilterSideSheet
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        onApply={(newFilters) => setFilters(newFilters)}
+        onClear={() => setFilters({ process: '', priceMin: '', priceMax: '', createdFrom: '', createdTo: '', modifiedFrom: '', modifiedTo: '' })}
+        filters={filters}
+        processes={uniqueProcesses}
       />
     </div>
   );

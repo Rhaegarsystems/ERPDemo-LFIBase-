@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { Moon, Sun, Monitor, Info, Code, Calendar, Shield, Database, Download, Upload, Cloud, RefreshCw, Terminal, Copy, Archive, FileText, Check } from 'lucide-react';
+import { Moon, Sun, Monitor, Info, Code, Calendar, Shield, Database, Download, Upload, Cloud, RefreshCw, Terminal, Copy, Archive, FileText, Check, ChevronRight } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { save, open } from '@tauri-apps/plugin-dialog';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
@@ -128,7 +128,6 @@ const Settings = () => {
     useEffect(() => {
         const checkConnection = async () => {
             try {
-                // Keep calling the same command, but interpret generically in UI
                 const connected = await invoke('is_google_drive_connected');
                 setIsConnected(connected);
                 if (connected) {
@@ -255,165 +254,59 @@ const Settings = () => {
 
     return (
         <div className="page-content">
-            <header className="page-header">
+            <header className="dashboard-header" style={{ marginBottom: '3rem', marginTop: 0 }}>
                 <div>
-                    <h1 className="page-title">
-                        Settings
-                    </h1>
-                    <p className="page-subtitle">
-                        Manage your application preferences and data
-                    </p>
+                    <h1 className="greeting-text" style={{ marginTop: 0 }}>Settings</h1>
+                    <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-muted)', fontSize: '1.1rem' }}>Personalize your experience and manage data</p>
                 </div>
             </header>
 
             <div className="settings-container">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                    {/* Appearance Card */}
-                    <div className="settings-card">
-                        <div className="settings-card-header">
-                            <div className="settings-card-icon">
-                                <Monitor size={20} />
-                            </div>
-                            <h2 className="settings-card-title">Appearance</h2>
+                {/* Appearance Section */}
+                <div className="settings-section-wrapper">
+                    <h2 className="settings-section-title">
+                        <Monitor size={18} /> Appearance
+                    </h2>
+                    
+                    <div className="settings-row">
+                        <div className="settings-row-info">
+                            <p className="settings-row-label">Interface Theme</p>
+                            <p className="settings-row-description">Switch between light and dark modes.</p>
                         </div>
-
-                        <div className="settings-section">
-                            <div className="appearance-toggle-row">
-                                <div className="appearance-info">
-                                    <div className="appearance-icon-box">
-                                        {theme === 'light'
-                                            ? <Sun size={22} style={{ color: '#f59e0b' }} />
-                                            : <Moon size={22} style={{ color: 'var(--primary)' }} />
-                                        }
-                                    </div>
-                                    <div className="appearance-text">
-                                        <h3>App Theme</h3>
-                                        <p>Choose your preferred theme.</p>
-                                    </div>
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    <button
-                                        onClick={() => theme !== 'light' && setTheme('light')}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            width: '40px',
-                                            height: '40px',
-                                            borderRadius: '10px',
-                                            border: theme === 'light' ? '2px solid #6366f1' : '1px solid var(--border)',
-                                            background: theme === 'light' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.15s ease'
-                                        }}
-                                    >
-                                        <Sun size={20} style={{ color: theme === 'light' ? '#6366f1' : 'var(--text-muted)' }} />
-                                    </button>
-                                    <button
-                                        onClick={() => theme !== 'dark' && setTheme('dark')}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            width: '40px',
-                                            height: '40px',
-                                            borderRadius: '10px',
-                                            border: theme === 'dark' ? '2px solid #6366f1' : '1px solid var(--border)',
-                                            background: theme === 'dark' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.15s ease'
-                                        }}
-                                    >
-                                        <Moon size={20} style={{ color: theme === 'dark' ? '#6366f1' : 'var(--text-muted)' }} />
-                                    </button>
-                                </div>
+                        <div className="settings-row-action">
+                            <div style={{ display: 'flex', background: 'var(--bg-secondary)', padding: '4px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                                <button
+                                    onClick={() => setTheme('light')}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '8px',
+                                        background: theme === 'light' ? 'var(--primary)' : 'transparent',
+                                        color: theme === 'light' ? 'white' : 'var(--text-secondary)',
+                                        border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem', transition: 'all 0.2s'
+                                    }}
+                                >
+                                    <Sun size={14} /> Light
+                                </button>
+                                <button
+                                    onClick={() => setTheme('dark')}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '8px',
+                                        background: theme === 'dark' ? 'var(--primary)' : 'transparent',
+                                        color: theme === 'dark' ? 'white' : 'var(--text-secondary)',
+                                        border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem', transition: 'all 0.2s'
+                                    }}
+                                >
+                                    <Moon size={14} /> Dark
+                                </button>
                             </div>
                         </div>
-                        
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 'auto' }}>
-                            Visual preferences are saved locally and persist across sessions.
-                        </p>
                     </div>
 
-                    {/* PDF Preferences Card */}
-                    <div className="settings-card">
-                        <div className="settings-card-header">
-                            <div className="settings-card-icon" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
-                                <FileText size={20} />
-                            </div>
-                            <h2 className="settings-card-title">Preferences</h2>
+                    <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '1rem' }}>
+                        <div className="settings-row-info">
+                            <p className="settings-row-label">Accent Color</p>
+                            <p className="settings-row-description">Personalize the application with a preset color palette.</p>
                         </div>
-
-                        <div className="settings-section">
-                            <div className="appearance-toggle-row">
-                                <div className="appearance-info">
-                                    <div className="appearance-icon-box" style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
-                                        <FileText size={22} style={{ color: '#3b82f6' }} />
-                                    </div>
-                                    <div className="appearance-text">
-                                        <h3>Auto-Open PDF</h3>
-                                        <p>Open PDF automatically after saving.</p>
-                                    </div>
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    <button
-                                        onClick={() => !autoOpenPdf && toggleAutoOpenPdf()}
-                                        style={{
-                                            padding: '6px 16px',
-                                            borderRadius: '8px',
-                                            fontSize: '0.75rem',
-                                            fontWeight: 700,
-                                            border: autoOpenPdf ? '2px solid var(--primary)' : '1px solid var(--border)',
-                                            background: autoOpenPdf ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                                            color: autoOpenPdf ? 'var(--primary)' : 'var(--text-muted)',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.15s ease'
-                                        }}
-                                    >
-                                        ON
-                                    </button>
-                                    <button
-                                        onClick={() => autoOpenPdf && toggleAutoOpenPdf()}
-                                        style={{
-                                            padding: '6px 16px',
-                                            borderRadius: '8px',
-                                            fontSize: '0.75rem',
-                                            fontWeight: 700,
-                                            border: !autoOpenPdf ? '2px solid #ef4444' : '1px solid var(--border)',
-                                            background: !autoOpenPdf ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
-                                            color: !autoOpenPdf ? '#ef4444' : 'var(--text-muted)',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.15s ease'
-                                        }}
-                                    >
-                                        OFF
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 'auto' }}>
-                            Control document handling behavior.
-                        </p>
-                    </div>
-                </div>
-
-                {/* Theme Presets Card */}
-                <div className="settings-card">
-                    <div className="settings-card-header">
-                        <div className="settings-card-icon" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
-                            <RefreshCw size={20} />
-                        </div>
-                        <h2 className="settings-card-title">Theme Presets</h2>
-                    </div>
-
-                    <div className="settings-section">
-                        <h3 style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--text-primary)' }}>
-                            {theme === 'light' ? 'Light Mode' : 'Dark Mode'}
-                        </h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '8px' }}>
+                        <div className="presets-grid">
                             {(theme === 'light' 
                                 ? [
                                     { id: 'default', label: 'Default', color: '#6366f1' },
@@ -433,454 +326,280 @@ const Settings = () => {
                                 <button
                                     key={v.id}
                                     onClick={() => changeVariant(v.id)}
-                                    style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        padding: '10px 6px',
-                                        borderRadius: '10px',
-                                        border: variant === v.id ? '2px solid var(--primary)' : '1px solid var(--border)',
-                                        background: variant === v.id ? 'rgba(99, 102, 241, 0.1)' : 'var(--bg-secondary)',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease'
-                                    }}
+                                    className={`preset-button ${variant === v.id ? 'active' : ''}`}
                                 >
-                                    <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: v.color, border: '1px solid rgba(255,255,255,0.1)' }} />
-                                    <span style={{ fontSize: '0.7rem', fontWeight: 500, color: variant === v.id ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{v.label}</span>
+                                    <div className="color-dot" style={{ background: v.color }} />
+                                    {v.label}
                                 </button>
                             ))}
                         </div>
                     </div>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 'auto' }}>
-                        Customize your theme color.
-                    </p>
                 </div>
 
-                {/* Cloud Backup Card - Intermediate */}
-                <div className="settings-card">
-                    <div className="settings-card-header">
-                        <div className="settings-card-icon" style={{ background: 'rgba(139, 92, 246, 0.1)', color: 'var(--primary)' }}>
-                            <Cloud size={20} />
+                {/* Preferences Section */}
+                <div className="settings-section-wrapper">
+                    <h2 className="settings-section-title">
+                        <Shield size={18} /> Preferences
+                    </h2>
+                    
+                    <div className="settings-row">
+                        <div className="settings-row-info">
+                            <p className="settings-row-label">Auto-Open PDF</p>
+                            <p className="settings-row-description">Automatically open the system's default PDF viewer after generating an invoice.</p>
                         </div>
-                        <h2 className="settings-card-title">Cloud Backup</h2>
-                    </div>
-
-                    <div className="settings-section">
-                        {!isConnected ? (
-                            <div style={{ textAlign: 'center', padding: '0.5rem 0' }}>
-                                <Shield size={24} style={{ color: 'var(--danger)', marginBottom: '0.5rem' }} />
-                                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
-                                    Configure credentials to enable
-                                </p>
+                        <div className="settings-row-action">
+                            <div style={{ display: 'flex', background: 'var(--bg-secondary)', padding: '4px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                                <button
+                                    onClick={() => !autoOpenPdf && toggleAutoOpenPdf()}
+                                    style={{
+                                        padding: '8px 20px', borderRadius: '8px',
+                                        background: autoOpenPdf ? 'var(--primary)' : 'transparent',
+                                        color: autoOpenPdf ? 'white' : 'var(--text-secondary)',
+                                        border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem', transition: 'all 0.2s'
+                                    }}
+                                >
+                                    ON
+                                </button>
+                                <button
+                                    onClick={() => autoOpenPdf && toggleAutoOpenPdf()}
+                                    style={{
+                                        padding: '8px 20px', borderRadius: '8px',
+                                        background: !autoOpenPdf ? 'var(--primary)' : 'transparent',
+                                        color: !autoOpenPdf ? 'white' : 'var(--text-secondary)',
+                                        border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem', transition: 'all 0.2s'
+                                    }}
+                                >
+                                    OFF
+                                </button>
                             </div>
-                        ) : (
-                            <div>
-                                {/* Action Buttons */}
-                                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-                                    <button 
-                                        onClick={handleCloudBackup} 
-                                        disabled={isSyncing}
-                                        style={{ 
-                                            flex: 1,
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            justifyContent: 'center', 
-                                            gap: '0.4rem',
-                                            padding: '0.65rem',
-                                            borderRadius: '8px',
-                                            border: 'none',
-                                            background: 'linear-gradient(135deg, var(--primary) 0%, #818cf8 100%)',
-                                            color: 'white',
-                                            fontSize: '0.7rem',
-                                            fontWeight: 600,
-                                            cursor: isSyncing ? 'not-allowed' : 'pointer',
-                                            opacity: isSyncing ? 0.7 : 1,
-                                            boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)'
-                                        }}
-                                    >
-                                        {isSyncing ? <RefreshCw size={12} className="spin" /> : <Upload size={12} />}
-                                        {isSyncing ? 'Uploading...' : 'Backup Now'}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Cloud & Data Section */}
+                <div className="settings-section-wrapper">
+                    <h2 className="settings-section-title">
+                        <Database size={18} /> Cloud & Data
+                    </h2>
+                    
+                    <div className="settings-row">
+                        <div className="settings-row-info">
+                            <p className="settings-row-label">Cloud Synchronization</p>
+                            <p className="settings-row-description">
+                                {isConnected ? 'Securely back up your data to the cloud.' : 'Connect your cloud account to enable automated backups.'}
+                            </p>
+                        </div>
+                        <div className="settings-row-action">
+                            {!isConnected ? (
+                                <button className="btn-ghost" style={{ gap: '8px' }}>
+                                    <Shield size={14} /> Configure Access
+                                </button>
+                            ) : (
+                                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                    <button onClick={handleCloudBackup} disabled={isSyncing} className="btn-primary-glow" style={{ fontSize: '0.8rem', padding: '0.6rem 1.2rem' }}>
+                                        {isSyncing ? <RefreshCw size={14} className="spin" /> : <Upload size={14} />}
+                                        Backup Now
                                     </button>
-                                    <button 
-                                        onClick={handleCloudRestore} 
-                                        disabled={isSyncing}
-                                        style={{ 
-                                            flex: 1,
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            justifyContent: 'center', 
-                                            gap: '0.4rem',
-                                            padding: '0.65rem',
-                                            borderRadius: '8px',
-                                            border: '1px solid var(--border)',
-                                            background: 'transparent',
-                                            color: 'var(--text-primary)',
-                                            fontSize: '0.7rem',
-                                            fontWeight: 600,
-                                            cursor: isSyncing ? 'not-allowed' : 'pointer',
-                                            opacity: isSyncing ? 0.7 : 1
-                                        }}
-                                    >
-                                        {isSyncing ? <RefreshCw size={12} className="spin" /> : <Download size={12} />}
-                                        {isSyncing ? 'Downloading...' : 'Restore'}
+                                    <button onClick={handleCloudRestore} disabled={isSyncing} className="btn-primary-glow" style={{ fontSize: '0.8rem', padding: '0.6rem 1.2rem', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)' }}>
+                                        <Download size={14} /> Restore Now
                                     </button>
                                 </div>
+                            )}
+                        </div>
+                    </div>
 
-                                {/* Backup History */}
-                                <div style={{ 
-                                    background: 'var(--bg-secondary)', 
-                                    borderRadius: '8px',
-                                    border: '1px solid var(--border)',
-                                    overflow: 'hidden'
-                                }}>
-                                    <div style={{ 
-                                        padding: '0.5rem 0.75rem', 
-                                        borderBottom: '1px solid var(--border)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.4rem'
-                                    }}>
-                                        <Archive size={12} style={{ color: 'var(--text-muted)' }} />
-                                        <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                                            Backup History
-                                        </span>
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                        {backupList.length > 0 ? (
-                                            backupList.slice(0, 8).map((backup, index) => (
-                                                <div 
-                                                    key={index}
-                                                    style={{ 
-                                                        padding: '0.5rem 0.75rem',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'space-between',
-                                                        borderBottom: index < Math.min(backupList.length, 8) - 1 ? '1px solid var(--border)' : 'none'
-                                                    }}
-                                                >
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-                                                        <Database size={12} style={{ color: 'var(--primary)' }} />
-                                                        <span style={{ fontSize: '0.65rem', color: 'var(--text-primary)' }}>
-                                                            {backup.key.split('/').pop()}
-                                                        </span>
-                                                    </div>
-                                                    <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                                                        {backup.last_modified ? new Date(backup.last_modified).toLocaleDateString() : ''}
-                                                    </span>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div style={{ padding: '1rem', textAlign: 'center' }}>
-                                                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0 }}>
-                                                    No backups yet
-                                                </p>
+                    {isConnected && (
+                        <div className="backup-info-box">
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                                <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Archive size={14} style={{ color: 'var(--primary)' }} /> Recent Cloud Backups
+                                </p>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                    {latestBackup ? `Last synced: ${latestBackup}` : 'No sync history'}
+                                </span>
+                            </div>
+                            
+                            <div className="backup-history-list">
+                                {backupList.length > 0 ? (
+                                    backupList.slice(0, 5).map((backup, index) => (
+                                        <div key={index} className="backup-history-item">
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)' }} />
+                                                <span style={{ fontWeight: 500 }}>{backup.key.split('/').pop()}</span>
                                             </div>
-                                        )}
-                                    </div>
+                                            <span style={{ color: 'var(--text-muted)' }}>
+                                                {backup.last_modified ? new Date(backup.last_modified).toLocaleDateString() : ''}
+                                            </span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', margin: '1rem 0' }}>No backups found.</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* About Section */}
+                <div className="settings-section-wrapper">
+                    <h2 className="settings-section-title">
+                        <Info size={18} /> About
+                    </h2>
+                    
+                    <div className="about-modern">
+                        <div className="about-branding">
+                            <div className="about-logo-placeholder">
+                                <FileText size={32} />
+                            </div>
+                            <div className="about-text">
+                                <h2>Little Flower Industries CRM</h2>
+                                <p>Industrial-grade inventory and invoicing management system built for reliability and performance.</p>
+                            </div>
+                        </div>
+
+                        <div className="tech-grid-modern">
+                            <div className="tech-card-modern" onClick={handleVersionClick} style={{ cursor: 'pointer' }}>
+                                <span className="label">System Version</span>
+                                <span className="value">1.9.0</span>
+                            </div>
+                            <div className="tech-card-modern">
+                                <span className="label">Build Date</span>
+                                <span className="value">April 2026</span>
+                            </div>
+                        </div>
+
+                        {/* Dev Tools PIN */}
+                        {showPinPrompt && !isDevMode && (
+                            <div style={{ padding: '1.5rem', background: 'var(--bg-secondary)', border: '1px solid var(--primary)', borderRadius: 'var(--radius-lg)' }}>
+                                <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '1rem' }}>Unlock Developer Tools</p>
+                                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                    <input 
+                                        type="password" maxLength={10} value={pinInput}
+                                        onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                                        placeholder="Enter PIN" className="form-input" style={{ textAlign: 'center', letterSpacing: '0.4em' }}
+                                    />
+                                    <button className="btn-primary-glow" onClick={handlePinSubmit}>Unlock</button>
+                                    <button className="btn-ghost" onClick={() => setShowPinPrompt(false)}>Cancel</button>
                                 </div>
                             </div>
                         )}
-                    </div>
-                    <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 'auto' }}>
-                        {latestBackup ? `Last backup: ${latestBackup}` : 'Encrypted backup to cloud'}
-                    </p>
-                </div>
 
-                {/* System Info Card */}
-                <div className="settings-card" style={{ gridColumn: '1 / -1' }}>
-                    <div className="settings-card-header">
-                        <div className="settings-card-icon" style={{ background: 'rgba(107, 114, 128, 0.1)', color: 'var(--text-secondary)' }}>
-                            <Info size={20} />
-                        </div>
-                        <h2 className="settings-card-title">About This Application</h2>
-                    </div>
-
-                    <div className="about-header">
-                        <h3 className="about-app-name">Little Flower Industries</h3>
-                        <p className="about-description">
-                            A comprehensive solution designed for managing inventory, customers, and invoicing.
-                        </p>
-                    </div>
-
-                    <div className="tech-info-grid">
-                        <div className="tech-info-item" onClick={handleVersionClick} style={{ cursor: 'pointer' }}>
-                            <Code size={18} className="tech-info-icon" />
-                            <div>
-                                <p className="tech-info-label">Version</p>
-                                <p className="tech-info-value">1.7.0</p>
-                            </div>
-                        </div>
-
-                        <div className="tech-info-item">
-                            <Calendar size={18} className="tech-info-icon" style={{ color: '#f59e0b' }} />
-                            <div>
-                                <p className="tech-info-label">Build Date</p>
-                                <p className="tech-info-value">April 2026</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* PIN Prompt Section */}
-                    {showPinPrompt && !isDevMode && (
-                        <div 
-                            style={{ 
-                                marginTop: '1.5rem', 
-                                padding: '1rem', 
-                                background: 'rgba(139, 92, 246, 0.1)', 
-                                borderRadius: 'var(--radius-md)',
-                                border: '1px solid var(--primary)'
-                            }}
-                        >
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Enter 10-digit Developer PIN:</p>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <input 
-                                    type="password" 
-                                    maxLength={10}
-                                    value={pinInput}
-                                    onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
-                                    placeholder="Enter PIN"
-                                    className="form-input"
-                                    style={{ textAlign: 'center', letterSpacing: '0.5em', fontWeight: 'bold' }}
-                                />
-                                <button className="btn-primary-glow" onClick={handlePinSubmit}>Unlock</button>
-                                <button className="btn-ghost" onClick={() => { setShowPinPrompt(false); setPinInput(''); }}>Cancel</button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Hidden Developer Section */}
-                    {isDevMode && (
-                        <div style={{ 
-                            marginTop: '2rem', 
-                            padding: '1.5rem', 
-                            background: 'rgba(0, 0, 0, 0.2)', 
-                            border: '1px solid var(--border)', 
-                            borderRadius: 'var(--radius-md)' 
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', color: 'var(--primary)' }}>
-                                <Terminal size={18} />
-                                <h4 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Developer Tools</h4>
-                            </div>
-                            
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                                {/* Database Key Section */}
-                                <div className="form-group">
-                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Database Encryption Key</label>
-                                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                                        <input 
-                                            type="text" 
-                                            readOnly 
-                                            value={dbKey} 
-                                            className="form-input" 
-                                            style={{ fontFamily: 'monospace', fontSize: '0.8rem', background: 'var(--bg-tertiary)' }} 
-                                        />
-                                        <button 
-                                            className="btn-glass" 
-                                            onClick={() => copyToClipboard(dbKey)}
-                                            style={{ padding: '0 1rem' }}
-                                        >
-                                            <Copy size={16} />
-                                        </button>
-                                    </div>
-                                    <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                                        Encryption key for manual database access.
-                                    </p>
+                        {/* Developer Mode Tools */}
+                        {isDevMode && (
+                            <div style={{ padding: '1.5rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', color: 'var(--primary)' }}>
+                                    <Terminal size={18} />
+                                    <p style={{ margin: 0, fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem' }}>Developer Mode Active</p>
                                 </div>
-
-                                {/* Local Backup Section - PROTECTED BY PIN */}
-                                <div>
-                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Advanced Data Management</label>
-                                    <div className="database-actions" style={{ marginTop: '0.5rem' }}>
-                                        <button className="btn-glass" onClick={handleLocalBackup} style={{ justifyContent: 'center', padding: '0.6rem', fontSize: '0.8rem', flex: 1 }}>
-                                            <Archive size={16} /> Export Local
-                                        </button>
-                                        <button className="btn-glass" onClick={handleLocalRestore} style={{ justifyContent: 'center', padding: '0.6rem', fontSize: '0.8rem', flex: 1 }}>
-                                            <Upload size={16} /> Import Local
-                                        </button>
+                                
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>Encryption Key</label>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <input type="text" readOnly value={dbKey} className="form-input" style={{ fontFamily: 'monospace', fontSize: '0.8rem' }} />
+                                            <button className="btn-ghost" onClick={() => copyToClipboard(dbKey)}><Copy size={16} /></button>
+                                        </div>
                                     </div>
-                                    <div style={{ marginTop: '1rem' }}>
-                                        <button 
-                                            className="btn-glass" 
-                                            onClick={() => setIsResetModalOpen(true)}
-                                            style={{ 
-                                                justifyContent: 'center', 
-                                                padding: '0.6rem', 
-                                                fontSize: '0.8rem', 
-                                                width: '100%',
-                                                color: '#ef4444',
-                                                background: 'rgba(239, 68, 68, 0.05)',
-                                                borderColor: 'rgba(239, 68, 68, 0.1)'
-                                            }}
-                                        >
-                                            <RefreshCw size={16} /> Reset Database (Delete All Data)
-                                        </button>
+                                    
+                                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                        <button className="btn-ghost" onClick={handleLocalBackup} style={{ flex: 1 }}><Archive size={14} /> Export DB</button>
+                                        <button className="btn-ghost" onClick={handleLocalRestore} style={{ flex: 1 }}><Upload size={14} /> Import DB</button>
                                     </div>
-                                    <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                                        Manually export, restore, or completely wipe local database files.
-                                    </p>
+                                    
+                                    <button className="btn-ghost" onClick={() => setIsResetModalOpen(true)} style={{ color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+                                        <RefreshCw size={14} /> Wipe All Local Data
+                                    </button>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    <div className="developer-tag">
-                        <p className="dev-label">Built and maintained by</p>
-                        <p className="dev-name">Rhaegarsystems</p>
-                        <p className="copyright">© 2026 Little Flower Industries. All rights reserved.</p>
+                        <div className="dev-footer-modern">
+                            <p className="built-by">Engineered and maintained by</p>
+                            <p 
+                                className="brand" 
+                                onClick={async () => {
+                                    try {
+                                        await invoke('open_file', { path: 'https://www.rhaegarsystems.com' });
+                                    } catch (e) {
+                                        console.error("Failed to open website:", e);
+                                    }
+                                }}
+                                style={{ cursor: 'pointer', transition: 'opacity 0.2s' }}
+                                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                            >
+                                RHAEGARSYSTEMS
+                            </p>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '1rem' }}>© 2026 Little Flower Industries. All rights reserved.</p>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <DeleteConfirmationModal
-                isOpen={isResetModalOpen}
-                onClose={() => setIsResetModalOpen(false)}
-                onConfirm={handleResetDatabase}
-                itemName="ALL local database data and encryption keys"
-                title="Reset Database"
+                isOpen={isResetModalOpen} onClose={() => setIsResetModalOpen(false)}
+                onConfirm={handleResetDatabase} itemName="ALL local database data and encryption keys" title="Reset Database"
             />
 
-            {/* Password Setup/Verify Modal */}
             <Modal
-                isOpen={showPasswordModal}
-                onClose={() => setShowPasswordModal(false)}
-                title={passwordMode === 'setup' ? 'Set Backup Password' : 'Enter Backup Password'}
+                isOpen={showPasswordModal} onClose={() => setShowPasswordModal(false)}
+                title={passwordMode === 'setup' ? 'Set Backup Password' : 'Verify Password'}
                 actions={
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                        <button className="btn-ghost" onClick={() => setShowPasswordModal(false)}>
-                            Cancel
-                        </button>
-                        <button className="btn-primary-glow" onClick={handlePasswordSubmit}>
-                            {passwordMode === 'setup' ? 'Set Password' : 'Verify'}
-                        </button>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button className="btn-ghost" onClick={() => setShowPasswordModal(false)}>Cancel</button>
+                        <button className="btn-primary-glow" onClick={handlePasswordSubmit}>{passwordMode === 'setup' ? 'Set Password' : 'Verify'}</button>
                     </div>
                 }
             >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {passwordMode === 'setup' ? (
-                        <>
-                            <div>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                    Create a backup password (used to encrypt backups)
-                                </label>
-                                <input
-                                    type="password"
-                                    className="form-input"
-                                    value={backupPassword}
-                                    onChange={(e) => setBackupPassword(e.target.value)}
-                                    placeholder="Enter password (min 6 chars)"
-                                    style={{ marginTop: '0.5rem' }}
-                                />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                    Confirm password
-                                </label>
-                                <input
-                                    type="password"
-                                    className="form-input"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    placeholder="Confirm password"
-                                    style={{ marginTop: '0.5rem' }}
-                                />
-                            </div>
-                        </>
-                    ) : (
-                        <div>
-                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                Enter your backup password to restore
-                            </label>
-                            <input
-                                type="password"
-                                className="form-input"
-                                value={backupPassword}
-                                onChange={(e) => setBackupPassword(e.target.value)}
-                                placeholder="Enter backup password"
-                                style={{ marginTop: '0.5rem' }}
-                            />
-                        </div>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
+                        {passwordMode === 'setup' ? 'Create a password to encrypt your cloud backups.' : 'Enter your password to unlock cloud restoration.'}
+                    </p>
+                    <input
+                        type="password" className="form-input" value={backupPassword}
+                        onChange={(e) => setBackupPassword(e.target.value)} placeholder="Password"
+                    />
+                    {passwordMode === 'setup' && (
+                        <input
+                            type="password" className="form-input" value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm Password"
+                        />
                     )}
                 </div>
             </Modal>
 
-            {/* Restore Backup Modal */}
             <Modal
-                isOpen={isRestoreModalOpen}
-                onClose={() => { setIsRestoreModalOpen(false); setSelectedBackup(null); }}
-                title="Select Backup to Restore"
-                actions={
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                        <button 
-                            className="btn-ghost" 
-                            onClick={() => { setIsRestoreModalOpen(false); setSelectedBackup(null); }}
-                        >
-                            Cancel
-                        </button>
-                        <button 
-                            className="btn-primary-glow" 
-                            onClick={handleRestoreConfirm}
-                            disabled={!selectedBackup || isRestoring}
-                            style={{ opacity: (!selectedBackup || isRestoring) ? 0.5 : 1 }}
-                        >
-                            {isRestoring ? <RefreshCw size={14} className="spin" /> : <Check size={14} />}
-                            {isRestoring ? 'Restoring...' : 'Restore'}
-                        </button>
-                    </div>
-                }
+                isOpen={isRestoreModalOpen} onClose={() => setIsRestoreModalOpen(false)}
+                title="Cloud Restore"
+                actions={<button className="btn-ghost" onClick={() => setIsRestoreModalOpen(false)}>Close</button>}
             >
-                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                    {backupList.length > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                            {backupList.map((backup, index) => (
-                                <div 
-                                    key={index}
-                                    onClick={() => setSelectedBackup(backup)}
-                                    style={{ 
-                                        padding: '0.75rem',
-                                        borderRadius: '8px',
-                                        border: selectedBackup?.key === backup.key 
-                                            ? '2px solid var(--primary)' 
-                                            : '1px solid var(--border)',
-                                        background: selectedBackup?.key === backup.key 
-                                            ? 'rgba(99, 102, 241, 0.1)' 
-                                            : 'var(--bg-secondary)',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        transition: 'all 0.15s ease'
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                        <Database size={16} style={{ color: 'var(--primary)' }} />
-                                        <div>
-                                            <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-primary)' }}>
-                                                {backup.key.split('/').pop()}
-                                            </p>
-                                            <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                                {backup.last_modified ? new Date(backup.last_modified).toLocaleString() : ''}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {selectedBackup?.key === backup.key && (
-                                        <Check size={16} style={{ color: 'var(--primary)' }} />
-                                    )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {backupList.map((backup, index) => (
+                        <div 
+                            key={index} onClick={() => setSelectedBackup(backup)}
+                            style={{ 
+                                padding: '1rem', borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s',
+                                border: '1px solid ' + (selectedBackup?.key === backup.key ? 'var(--primary)' : 'var(--glass-border)'),
+                                background: selectedBackup?.key === backup.key ? 'rgba(99, 102, 241, 0.05)' : 'transparent'
+                            }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <Archive size={16} style={{ color: 'var(--primary)' }} />
+                                    <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{backup.key.split('/').pop()}</span>
                                 </div>
-                            ))}
+                                {selectedBackup?.key === backup.key && (
+                                    <button 
+                                        className="btn-primary-glow" style={{ padding: '4px 12px', fontSize: '0.75rem' }}
+                                        onClick={(e) => { e.stopPropagation(); handleRestoreConfirm(); }}
+                                    >
+                                        Restore
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                    ) : (
-                        <div style={{ textAlign: 'center', padding: '2rem' }}>
-                            <Archive size={32} style={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }} />
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
-                                No backups found
-                            </p>
-                        </div>
-                    )}
+                    ))}
                 </div>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '1rem' }}>
-                    The application will restart after restore to load the restored data.
-                </p>
             </Modal>
         </div>
     );

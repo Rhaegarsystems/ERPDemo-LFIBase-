@@ -250,12 +250,10 @@ const Invoices = () => {
 
     return (
         <div className="page-container">
-            <header className="page-header">
-                <div>
-                    <h1 className="page-title">
-                        Invoices
-                    </h1>
-                    <p className="page-subtitle">Billing and payments.</p>
+            <header className="dashboard-header" style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 0 }}>
+                <div style={{ marginTop: 0 }}>
+                    <h1 className="greeting-text" style={{ marginTop: 0 }}>Invoices</h1>
+                    <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-muted)', fontSize: '1.1rem' }}>Billing and payments</p>
                 </div>
                 <button className="btn-primary-glow" onClick={() => navigate('/invoices/create')}>
                     <Plus size={18} /> New Invoice

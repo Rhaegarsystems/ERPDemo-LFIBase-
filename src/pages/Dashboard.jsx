@@ -1,14 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { IndianRupee, Users, ClipboardList, PlusCircle, Edit, Trash2, Save, FileText, User, Box, Activity, Building2 } from 'lucide-react';
+import { IndianRupee, Users, ClipboardList, PlusCircle, Edit, Trash2, Save, FileText, User, Box, Activity, Building2, ChevronRight, Clock, Plus, LayoutGrid } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
+import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip, XAxis } from 'recharts';
 import StatCard from '../components/StatCard';
 import '../styles/Dashboard.css';
 
 const Dashboard = () => {
+    const navigate = useNavigate();
     const [statsData, setStatsData] = useState({
         revenue: 0,
         customers: 0,
-        totalInvoices: 0
+        totalInvoices: 0,
+        prevMonthInvoices: 0,
+        prevTotalCustomers: 0,
+        invoiceHistory: [],
+        customerHistory: []
     });
     const [activityLogs, setActivityLogs] = useState([]);
 
@@ -19,7 +26,11 @@ const Dashboard = () => {
                 setStatsData({
                     revenue: result.revenue,
                     customers: result.customers,
-                    totalInvoices: result.total_invoices || 0
+                    totalInvoices: result.total_invoices || 0,
+                    prevMonthInvoices: result.prev_month_invoices || 0,
+                    prevTotalCustomers: result.prev_total_customers || 0,
+                    invoiceHistory: result.invoice_history || [],
+                    customerHistory: result.customer_history || []
                 });
 
                 const logs = await invoke('get_activity_logs');
@@ -31,23 +42,39 @@ const Dashboard = () => {
         fetchData();
     }, []);
 
-    const getActionIcon = (action) => {
-        switch (action.toLowerCase()) {
-            case 'created': return <PlusCircle size={16} />;
-            case 'updated': return <Edit size={16} />;
-            case 'deleted': return <Trash2 size={16} />;
-            case 'saved': return <Save size={16} />;
-            default: return <Activity size={16} />;
-        }
+    const getTrend = (current, prev) => {
+        if (current > prev) return { label: 'Increasing', color: 'var(--success)', icon: '↑' };
+        if (current < prev) return { label: 'Decreasing', color: 'var(--danger)', icon: '↓' };
+        return { label: 'Stable', color: 'var(--text-muted)', icon: '→' };
     };
+
+    const clientTrend = getTrend(statsData.customers, statsData.prevTotalCustomers);
+    const invoiceTrend = getTrend(statsData.totalInvoices, statsData.prevMonthInvoices);
+
+    // Helper to format month strings like "2024-03" to "Mar"
+    const formatMonth = (str) => {
+        if (!str) return "";
+        const [year, month] = str.split('-');
+        const date = new Date(year, parseInt(month) - 1);
+        return date.toLocaleString('default', { month: 'short' });
+    };
+
+    // Prepare 6-month chart data
+    const clientChartData = statsData.customerHistory.length > 1 
+        ? statsData.customerHistory.map(p => ({ ...p, name: formatMonth(p.name) }))
+        : [{ name: 'Prev', val: statsData.prevTotalCustomers }, { name: 'Now', val: statsData.customers }];
+
+    const invoiceChartData = statsData.invoiceHistory.length > 1 
+        ? statsData.invoiceHistory.map(p => ({ ...p, name: formatMonth(p.name) }))
+        : [{ name: 'Prev', val: statsData.prevMonthInvoices }, { name: 'Now', val: statsData.totalInvoices }];
 
     const getActionColor = (action) => {
         switch (action.toLowerCase()) {
-            case 'created': return { bg: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.1) 100%)', color: '#10b981', border: 'rgba(16, 185, 129, 0.4)' };
-            case 'updated': return { bg: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.1) 100%)', color: '#3b82f6', border: 'rgba(59, 130, 246, 0.4)' };
-            case 'deleted': return { bg: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.1) 100%)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.4)' };
-            case 'saved': return { bg: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(139, 92, 246, 0.1) 100%)', color: '#8b5cf6', border: 'rgba(139, 92, 246, 0.4)' };
-            default: return { bg: 'linear-gradient(135deg, rgba(107, 114, 128, 0.2) 0%, rgba(107, 114, 128, 0.1) 100%)', color: '#9ca3af', border: 'rgba(107, 114, 128, 0.4)' };
+            case 'created': return '#10b981';
+            case 'updated': return '#3b82f6';
+            case 'deleted': return '#ef4444';
+            case 'saved': return '#8b5cf6';
+            default: return '#9ca3af';
         }
     };
 
@@ -60,179 +87,152 @@ const Dashboard = () => {
         }
     };
 
-    // Date formatting
     const today = new Date();
-    const dateOptions = { day: '2-digit', month: 'long', year: 'numeric' };
-    const dayOptions = { weekday: 'long' };
-    const formattedDate = today.toLocaleDateString('en-GB', dateOptions);
-    const formattedDay = today.toLocaleDateString('en-GB', dayOptions);
-
-    // Stats cards
-    const stats = [
-        {
-            title: "Little Flower Industries",
-            value: (
-                <div style={{ fontSize: '0.85rem', fontWeight: 'normal', lineHeight: '1.4', marginTop: '4px' }}>
-                    <div style={{ color: 'var(--text-primary)', fontWeight: '600', marginBottom: '4px' }}>
-                        No:209, New Tiny Sector, Ambattur Industrial Estate, Chennai-600058
-                    </div>
-                    <div style={{ color: 'var(--primary)' }}>
-                        {formattedDate} | {formattedDay}
-                    </div>
-                </div>
-            ),
-            icon: <Building2 size={24} color="#8b5cf6" />
-        },
-        {
-            title: "Total Customers",
-            value: statsData.customers.toString(),
-            icon: <Users size={24} color="#3b82f6" />
-        },
-        {
-            title: "Current Month Invoices",
-            value: statsData.totalInvoices.toString(),
-            icon: <FileText size={24} color="#f59e0b" />
-        }
-    ];
+    const formattedDate = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+    const formattedDay = today.toLocaleDateString('en-GB', { weekday: 'long' });
 
     return (
         <div className="dashboard-container">
-            <header className="page-header">
-                <div>
-                    <h1 className="page-title">
-                        Dashboard
-                    </h1>
-                    <p className="page-subtitle">
-                        Overview of your business performance.
-                    </p>
+            {/* Greeting Header */}
+            <header className="dashboard-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 0 }}>
+                <div style={{ marginTop: 0 }}>
+                    <h1 className="greeting-text" style={{ marginTop: 0 }}>Welcome back</h1>
+                    <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-muted)', fontSize: '1.1rem' }}>Overview</p>
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div className="quick-action-icons" style={{ display: 'flex', gap: '0.5rem', marginRight: '1rem', paddingRight: '1rem', borderRight: '1px solid var(--glass-border)' }}>
+                        <Link to="/invoices/create" className="icon-action-btn" title="Create Invoice" style={{ 
+                            width: '42px', height: '42px', borderRadius: '12px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', transition: 'all 0.2s'
+                        }}>
+                            <Plus size={20} />
+                        </Link>
+                        <Link to="/customers" className="icon-action-btn" title="Add Customer" style={{ 
+                            width: '42px', height: '42px', borderRadius: '12px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6', transition: 'all 0.2s'
+                        }}>
+                            <User size={20} />
+                        </Link>
+                        <Link to="/inventory" className="icon-action-btn" title="Parts" style={{ 
+                            width: '42px', height: '42px', borderRadius: '12px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', transition: 'all 0.2s'
+                        }}>
+                            <Box size={20} />
+                        </Link>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                        <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)' }}>{formattedDate}</p>
+                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--primary)' }}>{formattedDay}</p>
+                    </div>
                 </div>
             </header>
 
-            <div className="stats-grid">
-                {stats.map((stat, index) => (
-                    <StatCard key={index} {...stat} />
-                ))}
-            </div>
-
-            <div
-                className="dashboard-card"
-                style={{ marginTop: '1.5rem' }}
-            >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-                        <ClipboardList size={20} /> Recent Activity
-                    </h3>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                        {activityLogs.length} total entries
-                    </span>
-                </div>
-
-                {activityLogs.length === 0 ? (
-                    <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '4rem',
-                        color: 'var(--text-secondary)'
-                    }}>
-                        <ClipboardList size={64} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                        <p style={{ margin: 0 }}>No activity logged yet</p>
+            <div className="dashboard-main-grid" style={{ marginTop: '-0.5rem' }}>
+                {/* Left Column: Timeline Activity */}
+                <section className="timeline-card">
+                    <div className="timeline-header">
+                        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.1rem', color: 'var(--text-primary)' }}>
+                            <Clock size={20} style={{ color: 'var(--primary)' }} /> Recent Changes
+                        </h3>
+                        <Link to="/settings" style={{ fontSize: '0.8rem', color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}>Settings</Link>
                     </div>
-                ) : (
-                    <div style={{ maxHeight: '500px', overflowY: 'auto', paddingRight: '0.5rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            {activityLogs.slice(0, 25).map((log) => {
-                                const actionStyle = getActionColor(log.action);
-                                return (
-                                    <div
-                                        key={log.id}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '1rem',
-                                            padding: '1rem',
-                                            background: 'linear-gradient(135deg, rgba(30, 30, 45, 0.8) 0%, rgba(40, 40, 60, 0.8) 100%)',
-                                            borderRadius: 'var(--radius-md)',
-                                            border: '1px solid rgba(99, 102, 241, 0.2)',
-                                        }}
-                                    >
-                                        {/* Action Icon */}
-                                        <div style={{
-                                            width: '40px',
-                                            height: '40px',
-                                            borderRadius: '10px',
-                                            background: actionStyle.bg,
-                                            border: `1px solid ${actionStyle.border}`,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            color: actionStyle.color,
-                                            flexShrink: 0
-                                        }}>
-                                            {getActionIcon(log.action)}
-                                        </div>
 
-                                        {/* Content */}
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                                                <span style={{
-                                                    fontWeight: 600,
-                                                    color: actionStyle.color,
-                                                    fontSize: '0.85rem',
-                                                    textTransform: 'uppercase',
-                                                    letterSpacing: '0.03em'
-                                                }}>
-                                                    {log.action}
-                                                </span>
-                                                <span style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '0.25rem',
-                                                    color: 'var(--text-secondary)',
-                                                    fontSize: '0.85rem'
-                                                }}>
-                                                    {getEntityIcon(log.entity_type)}
-                                                    {log.entity_type}
-                                                </span>
+                    <div className="timeline-scroll-area">
+                        {activityLogs.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                                <Activity size={48} style={{ opacity: 0.1, marginBottom: '1rem' }} />
+                                <p>Waiting for your first move...</p>
+                            </div>
+                        ) : (
+                            <div className="timeline-container">
+                                {activityLogs.map((log) => {
+                                    const actionColor = getActionColor(log.action);
+                                    return (
+                                        <div key={log.id} className="timeline-item">
+                                            <div className="timeline-dot" style={{ borderColor: actionColor }}>
+                                                <div style={{ color: actionColor }}>{getEntityIcon(log.entity_type)}</div>
                                             </div>
-                                            <div style={{
-                                                fontSize: '0.95rem',
-                                                color: 'var(--text-primary)',
-                                                fontWeight: 500,
-                                                whiteSpace: 'nowrap',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis'
-                                            }}>
-                                                {log.entity_name}
-                                            </div>
-                                            {log.details && (
-                                                <div style={{
-                                                    fontSize: '0.8rem',
-                                                    color: 'var(--text-secondary)',
-                                                    marginTop: '0.25rem'
-                                                }}>
-                                                    {log.details}
+                                            <div className="timeline-content">
+                                                <div className="timeline-meta">
+                                                    <span className="timeline-action" style={{ background: actionColor + '20', color: actionColor }}>
+                                                        {log.action}
+                                                    </span>
+                                                    <span className="timeline-time">{log.timestamp}</span>
                                                 </div>
-                                            )}
+                                                <div className="timeline-title">
+                                                    {log.entity_name}
+                                                </div>
+                                                <div className="timeline-desc">
+                                                    {log.entity_type} {log.details && `• ${log.details}`}
+                                                </div>
+                                            </div>
                                         </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </section>
 
-                                        {/* Timestamp */}
-                                        <div style={{
-                                            fontSize: '0.75rem',
-                                            color: 'var(--text-muted)',
-                                            whiteSpace: 'nowrap',
-                                            textAlign: 'right',
-                                            flexShrink: 0
-                                        }}>
-                                            {log.timestamp}
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                {/* Right Column: Stats & Charts */}
+                <div className="stats-column">
+                    {/* Total Clients Chart */}
+                    <div className="chart-card">
+                        <div className="chart-title">Total Clients</div>
+                        <div className="chart-content-wrapper">
+                            <div style={{ width: '100%', height: 100 }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={clientChartData}>
+                                        <Line type="monotone" dataKey="val" stroke="#3b82f6" strokeWidth={4} dot={true} animationDuration={1000} />
+                                        <Tooltip 
+                                            contentStyle={{ background: 'rgba(20, 20, 30, 0.8)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}
+                                            itemStyle={{ color: '#fff' }}
+                                            labelStyle={{ color: 'var(--primary)', fontWeight: 'bold' }}
+                                        />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                        <div className="chart-data-footer">
+                            <span className="chart-value">{statsData.customers}</span>
+                            <div className="chart-label-group">
+                                <span className="chart-label">Total Clients</span>
+                                <span className="chart-trend" style={{ color: clientTrend.color }}>
+                                    {clientTrend.icon} {clientTrend.label}
+                                </span>
+                            </div>
                         </div>
                     </div>
-                )}
+
+                    {/* Monthly Invoices Chart */}
+                    <div className="chart-card">
+                        <div className="chart-title">Monthly Invoices</div>
+                        <div className="chart-content-wrapper">
+                            <div style={{ width: '100%', height: 100 }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={invoiceChartData}>
+                                        <Line type="monotone" dataKey="val" stroke="#f59e0b" strokeWidth={4} dot={true} animationDuration={1000} />
+                                        <Tooltip 
+                                            contentStyle={{ background: 'rgba(20, 20, 30, 0.8)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}
+                                            itemStyle={{ color: '#fff' }}
+                                            labelStyle={{ color: 'var(--primary)', fontWeight: 'bold' }}
+                                        />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                        <div className="chart-data-footer">
+                            <span className="chart-value">{statsData.totalInvoices}</span>
+                            <div className="chart-label-group">
+                                <span className="chart-label">This Month</span>
+                                <span className="chart-trend" style={{ color: invoiceTrend.color }}>
+                                    {invoiceTrend.icon} {invoiceTrend.label}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );

@@ -123,8 +123,8 @@ const InvoiceTemplate = React.forwardRef(({ invoice, totals, taxRates, amountToW
                 </div>
 
                 <div className="signature-section">
-                    <div className="received-text" style={{ marginLeft: '10px' }}>
-                        <p style={{ fontStyle: 'italic', fontWeight: 'bold', fontSize: '22px' }}>Received in good condition</p>
+                    <div className="received-text" style={{ marginLeft: '10px', alignSelf: 'flex-start', marginTop: '10px' }}>
+                        <p style={{ fontStyle: 'italic', fontWeight: 'bold', fontSize: '22px', margin: 0 }}>Received in good condition</p>
                     </div>
                     <div className="sign-box" style={{ marginLeft: 'auto', marginRight: '50px' }}>
                         <p style={{ fontWeight: 'bold', fontSize: '16px' }}>For LITTLE FLOWER INDUSTRIES</p>
@@ -159,7 +159,8 @@ const InvoiceTemplate = React.forwardRef(({ invoice, totals, taxRates, amountToW
                 .totals-section { font-size: 13px; }
                 .totals-section .row { display: flex; justify-content: space-between; border-bottom: 1px solid black; padding: 2px 5px; }
                 .totals-section .row:last-child { border-bottom: none; }
-                .signature-section { display: flex; justify-content: space-between; padding: 20px 5px; border: 1px solid black; border-top: none; font-size: 13px; align-items: flex-end; }
+                .signature-section { display: flex; justify-content: space-between; padding: 20px 10px; border: 1px solid black; border-top: none; font-size: 13px; align-items: flex-end; }
+                .received-text { width: 45%; }
                 .sign-box { text-align: center; }
             `}</style>
         </div>

@@ -446,17 +446,54 @@ const CreateInvoice = () => {
 
     return (
         <div className="page-container">
-            <header className="page-header no-print">
-                <div className="flex items-center gap-4">
-                    <button className="btn-ghost" onClick={() => navigate('/invoices')}><ArrowLeft size={20} /></button>
-                    <div>
-                        <h1 className="page-title">{id ? 'Edit Invoice' : 'Create Invoice'}</h1>
-                        <p className="page-subtitle">Invoice details</p>
+            <header className="dashboard-header no-print" style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 0 }}>
+                <div className="flex items-center gap-4" style={{ marginTop: 0 }}>
+                    <button 
+                        className="back-button-circular" 
+                        onClick={() => navigate('/invoices')}
+                        title="Back to Invoices"
+                    >
+                        <ArrowLeft size={20} />
+                    </button>
+                    <div style={{ marginTop: 0 }}>
+                        <h1 className="greeting-text" style={{ marginTop: 0 }}>{id ? 'Edit Invoice' : 'New Invoice'}</h1>
+                        <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-muted)', fontSize: '1.1rem' }}>Invoice details</p>
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <button className="btn-primary-glow" onClick={handleSave} style={{ background: '#10b981' }}><Save size={18} /> Save</button>
-                    <button className="btn-primary-glow" onClick={handlePrint}><Printer size={18} /> PDF</button>
+                    <button 
+                        className="btn-primary-glow" 
+                        onClick={handleSave} 
+                        style={{ 
+                            background: '#10b981',
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: 0
+                        }}
+                        title="Save Invoice"
+                    >
+                        <Save size={18} />
+                    </button>
+                    <button 
+                        className="btn-primary-glow" 
+                        onClick={handlePrint}
+                        style={{ 
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: 0
+                        }}
+                        title="Generate PDF"
+                    >
+                        <Printer size={18} />
+                    </button>
                 </div>
             </header>
 
@@ -877,8 +914,8 @@ const CreateInvoice = () => {
                     </div>
 
                     <div className="signature-section">
-                        <div className="received-text" style={{ marginLeft: '10px' }}>
-                            <p style={{ fontStyle: 'italic', fontWeight: 'bold', fontSize: '22px' }}>Received in good condition</p>
+                        <div className="received-text" style={{ marginLeft: '10px', alignSelf: 'flex-start', marginTop: '10px' }}>
+                            <p style={{ fontStyle: 'italic', fontWeight: 'bold', fontSize: '22px', margin: 0 }}>Received in good condition</p>
                         </div>
                         <div className="sign-box" style={{ marginLeft: 'auto', marginRight: '50px' }}>
                             <p style={{ fontWeight: 'bold', fontSize: '16px' }}>For LITTLE FLOWER INDUSTRIES</p>

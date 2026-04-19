@@ -1,32 +1,47 @@
-import React from 'react';
-import Modal from './Modal';
+import React, { useEffect } from 'react';
+import { X } from 'lucide-react';
 import '../styles/DetailViewModal.css';
 
 const DetailViewModal = ({ isOpen, onClose, title, data, fields }) => {
-    if (!data) return null;
+    useEffect(() => {
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') onClose();
+        };
+        if (isOpen) window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [isOpen, onClose]);
+
+    if (!isOpen || !data) return null;
 
     return (
-        <Modal
-            isOpen={isOpen}
-            onClose={onClose}
-            title={title}
-            actions={
-                <button className="btn-ghost" onClick={onClose}>Close</button>
-            }
-        >
-            <div className="detail-grid">
-                {fields.map((field, index) => (
-                    <div key={field.key} className="detail-item">
-                        <span className="detail-label">{field.label}</span>
-                        <span className="detail-value">
-                            {field.render
-                                ? field.render(data[field.key], data)
-                                : (data[field.key] || '—')}
-                        </span>
+        <>
+            <div className="sheet-overlay" onClick={onClose} />
+            <div className="side-sheet">
+                <div className="sheet-header">
+                    <h3>{title}</h3>
+                    <button className="close-btn" onClick={onClose}>
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="sheet-body">
+                    <div className="detail-grid">
+                        {fields.map((field, index) => (
+                            <div key={field.key} className="detail-item">
+                                <span className="detail-label">{field.label}</span>
+                                <span className="detail-value">
+                                    {field.render
+                                        ? field.render(data[field.key], data)
+                                        : (data[field.key] || '—')}
+                                </span>
+                            </div>
+                        ))}
                     </div>
-                ))}
+                </div>
+                <div className="sheet-footer">
+                    <button className="btn-ghost" onClick={onClose}>Close</button>
+                </div>
             </div>
-        </Modal>
+        </>
     );
 };
 

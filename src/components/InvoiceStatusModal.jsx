@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, CheckCircle, Clock, AlertCircle, Ban } from 'lucide-react';
-import '../styles/Modal.css';
+import '../styles/DetailViewModal.css';
 
 const statusOptions = [
     { value: 'Pending', label: 'Pending', icon: Clock, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)' },
@@ -12,6 +12,14 @@ const statusOptions = [
 const InvoiceStatusModal = ({ isOpen, onClose, invoice, onStatusChange }) => {
     const [selectedStatus, setSelectedStatus] = useState(invoice?.status || 'Pending');
     const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') onClose();
+        };
+        if (isOpen) window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [isOpen, onClose]);
 
     const handleSave = async () => {
         setIsLoading(true);
@@ -25,106 +33,98 @@ const InvoiceStatusModal = ({ isOpen, onClose, invoice, onStatusChange }) => {
         }
     };
 
-    if (!invoice) return null;
+    if (!invoice || !isOpen) return null;
 
     return (
         <>
-            {isOpen && (
-                <div className="modal-overlay" onClick={onClose}>
-                    <div
-                        className="modal-container"
-                        style={{ width: '450px' }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="modal-header">
-                            <h3>Update Invoice Status</h3>
-                            <button className="close-btn" onClick={onClose}>
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        <div className="modal-body">
-                            {/* Invoice Info */}
-                            <div style={{
-                                background: 'var(--bg-tertiary)',
-                                padding: '1rem',
-                                borderRadius: 'var(--radius-md)',
-                                marginBottom: '1.5rem'
-                            }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                                    <div>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Invoice No.</span>
-                                        <p style={{ margin: 0, fontWeight: 600, color: 'var(--primary)' }}>{invoice.id}</p>
-                                    </div>
-                                    <div>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Client</span>
-                                        <p style={{ margin: 0, color: 'var(--text-primary)' }}>{invoice.client_name}</p>
-                                    </div>
-                                    <div>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Date</span>
-                                        <p style={{ margin: 0, color: 'var(--text-primary)' }}>{invoice.date}</p>
-                                    </div>
-                                    <div>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Amount</span>
-                                        <p style={{ margin: 0, fontWeight: 600, color: 'var(--success)' }}>
-                                            ₹{invoice.amount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                        </p>
-                                    </div>
-                                </div>
+            <div className="sheet-overlay" onClick={onClose} />
+            <div className="side-sheet">
+                <div className="sheet-header">
+                    <h3>Invoice Details</h3>
+                    <button className="close-btn" onClick={onClose}>
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="sheet-body">
+                    {/* Invoice Info */}
+                    <div style={{
+                        background: 'var(--bg-tertiary)',
+                        padding: '1rem',
+                        borderRadius: 'var(--radius-md)',
+                        marginBottom: '1.5rem'
+                    }}>
+                        <div className="detail-grid">
+                            <div>
+                                <span className="detail-label">Invoice No.</span>
+                                <p style={{ margin: 0, fontWeight: 600, color: 'var(--primary)' }}>{invoice.id}</p>
                             </div>
-
-                            {/* Status Options */}
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-                                Select Status:
-                            </p>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                                {statusOptions.map((option) => {
-                                    const IconComponent = option.icon;
-                                    const isSelected = selectedStatus === option.value;
-                                    return (
-                                        <div
-                                            key={option.value}
-                                            onClick={() => setSelectedStatus(option.value)}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.75rem',
-                                                padding: '1rem',
-                                                borderRadius: 'var(--radius-md)',
-                                                border: isSelected ? `2px solid ${option.color}` : '2px solid var(--border)',
-                                                background: isSelected ? option.bg : 'var(--bg-secondary)',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            <IconComponent
-                                                size={22}
-                                                style={{ color: option.color }}
-                                            />
-                                            <span style={{
-                                                fontWeight: isSelected ? 600 : 400,
-                                                color: isSelected ? option.color : 'var(--text-primary)'
-                                            }}>
-                                                {option.label}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
+                            <div>
+                                <span className="detail-label">Client</span>
+                                <p style={{ margin: 0, color: 'var(--text-primary)' }}>{invoice.client_name}</p>
                             </div>
-                        </div>
-
-                        <div className="modal-footer">
-                            <button className="btn-ghost" onClick={onClose}>Cancel</button>
-                            <button
-                                className="btn-primary-glow"
-                                onClick={handleSave}
-                                disabled={isLoading}
-                            >
-                                {isLoading ? 'Saving...' : 'Update Status'}
-                            </button>
+                            <div>
+                                <span className="detail-label">Date</span>
+                                <p style={{ margin: 0, color: 'var(--text-primary)' }}>{invoice.date}</p>
+                            </div>
+                            <div>
+                                <span className="detail-label">Amount</span>
+                                <p style={{ margin: 0, fontWeight: 600, color: 'var(--success)' }}>
+                                    ₹{invoice.amount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </p>
+                            </div>
                         </div>
                     </div>
+
+                    {/* Status Options */}
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+                        Select Status:
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                        {statusOptions.map((option) => {
+                            const IconComponent = option.icon;
+                            const isSelected = selectedStatus === option.value;
+                            return (
+                                <div
+                                    key={option.value}
+                                    onClick={() => setSelectedStatus(option.value)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.75rem',
+                                        padding: '1rem',
+                                        borderRadius: 'var(--radius-md)',
+                                        border: isSelected ? `2px solid ${option.color}` : '2px solid var(--border)',
+                                        background: isSelected ? option.bg : 'var(--bg-secondary)',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <IconComponent
+                                        size={22}
+                                        style={{ color: option.color }}
+                                    />
+                                    <span style={{
+                                        fontWeight: isSelected ? 600 : 400,
+                                        color: isSelected ? option.color : 'var(--text-primary)'
+                                    }}>
+                                        {option.label}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
-            )}
+
+                <div className="sheet-footer">
+                    <button className="btn-ghost" onClick={onClose}>Cancel</button>
+                    <button
+                        className="btn-primary-glow"
+                        onClick={handleSave}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? 'Saving...' : 'Update Status'}
+                    </button>
+                </div>
+            </div>
         </>
     );
 };

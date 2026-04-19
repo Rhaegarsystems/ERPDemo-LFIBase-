@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Users } from 'lucide-react';
 import GlassTable from '../components/GlassTable';
-import Modal from '../components/Modal';
+import FormSideSheet from '../components/FormSideSheet';
 import DetailViewModal from '../components/DetailViewModal';
 import { useToast } from '../components/ToastProvider';
 import { useConfirmToast } from '../components/ConfirmToastProvider';
@@ -134,12 +134,10 @@ const Customers = () => {
 
     return (
         <div className="page-container">
-            <header className="page-header">
-                <div>
-                    <h1 className="page-title">
-                        Customers
-                    </h1>
-                    <p className="page-subtitle">Manage client relationships.</p>
+            <header className="dashboard-header" style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 0 }}>
+                <div style={{ marginTop: 0 }}>
+                    <h1 className="greeting-text" style={{ marginTop: 0 }}>Customers</h1>
+                    <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-muted)', fontSize: '1.1rem' }}>Manage client relationships</p>
                 </div>
                 <button className="btn-primary-glow" onClick={() => {
                     setNewCustomer({ id: null, name: '', contact: '', email: '', phone: '', address: '', gstin: '', state: '', state_code: '', vendor_code: '', pincode: '' });
@@ -176,7 +174,7 @@ const Customers = () => {
                 />
             )}
 
-            <Modal
+            <FormSideSheet
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 title={newCustomer.id ? "Edit Customer" : "Add New Customer"}
@@ -187,55 +185,46 @@ const Customers = () => {
                     </>
                 }
             >
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <div className="form-group" style={{ flex: 3 }}>
-                        <label>Company/Customer Name</label>
-                        <input
-                            type="text"
-                            className="form-input"
-                            value={newCustomer.name}
-                            onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
-                            placeholder="e.g. Acme Corp"
-                        />
-                    </div>
-                    <div className="form-group" style={{ flex: 1 }}>
-                        <label>Vendor Code</label>
-                        <input
-                            type="text"
-                            className="form-input"
-                            value={newCustomer.vendor_code}
-                            onChange={(e) => setNewCustomer({ ...newCustomer, vendor_code: e.target.value })}
-                            placeholder="VC-001"
-                        />
-                    </div>
+                <div className="form-group">
+                    <label>Company/Customer Name</label>
+                    <input
+                        type="text"
+                        className="form-input"
+                        value={newCustomer.name}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
+                        placeholder="e.g. Acme Corp"
+                    />
                 </div>
-
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <div className="form-group" style={{ flex: 1 }}>
-                        <label>Contact Person</label>
-                        <input type="text" className="form-input" value={newCustomer.contact}
-                            onChange={(e) => setNewCustomer({ ...newCustomer, contact: e.target.value })} />
-                    </div>
-                    <div className="form-group" style={{ flex: 2 }}>
-                        <label>GSTIN</label>
-                        <input type="text" className="form-input" value={newCustomer.gstin}
-                            onChange={(e) => setNewCustomer({ ...newCustomer, gstin: e.target.value })} />
-                    </div>
+                <div className="form-group">
+                    <label>Vendor Code</label>
+                    <input
+                        type="text"
+                        className="form-input"
+                        value={newCustomer.vendor_code}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, vendor_code: e.target.value })}
+                        placeholder="VC-001"
+                    />
                 </div>
-
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <div className="form-group" style={{ flex: 1 }}>
-                        <label>Email</label>
-                        <input type="email" className="form-input" value={newCustomer.email}
-                            onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} />
-                    </div>
-                    <div className="form-group" style={{ flex: 1 }}>
-                        <label>Phone</label>
-                        <input type="tel" className="form-input" value={newCustomer.phone}
-                            onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} />
-                    </div>
+                <div className="form-group">
+                    <label>Contact Person</label>
+                    <input type="text" className="form-input" value={newCustomer.contact}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, contact: e.target.value })} />
                 </div>
-
+                <div className="form-group">
+                    <label>GSTIN</label>
+                    <input type="text" className="form-input" value={newCustomer.gstin}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, gstin: e.target.value })} />
+                </div>
+                <div className="form-group">
+                    <label>Email</label>
+                    <input type="email" className="form-input" value={newCustomer.email}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} />
+                </div>
+                <div className="form-group">
+                    <label>Phone</label>
+                    <input type="tel" className="form-input" value={newCustomer.phone}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} />
+                </div>
                 <div className="form-group">
                     <label>Address</label>
                     <textarea
@@ -245,28 +234,25 @@ const Customers = () => {
                         onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })}
                     />
                 </div>
-
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <div className="form-group" style={{ flex: 1 }}>
-                        <label>Pincode</label>
-                        <input type="text" className="form-input" value={newCustomer.pincode}
-                            onChange={(e) => setNewCustomer({ ...newCustomer, pincode: e.target.value })}
-                            placeholder="600050" />
-                    </div>
-                    <div className="form-group" style={{ flex: 1 }}>
-                        <label>State</label>
-                        <input type="text" className="form-input" value={newCustomer.state}
-                            onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })}
-                            placeholder="Tamil Nadu" />
-                    </div>
-                    <div className="form-group" style={{ flex: 1 }}>
-                        <label>State Code</label>
-                        <input type="text" className="form-input" value={newCustomer.state_code}
-                            onChange={(e) => setNewCustomer({ ...newCustomer, state_code: e.target.value })}
-                            placeholder="33" />
-                    </div>
+                <div className="form-group">
+                    <label>Pincode</label>
+                    <input type="text" className="form-input" value={newCustomer.pincode}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, pincode: e.target.value })}
+                        placeholder="600050" />
                 </div>
-            </Modal>
+                <div className="form-group">
+                    <label>State</label>
+                    <input type="text" className="form-input" value={newCustomer.state}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })}
+                        placeholder="Tamil Nadu" />
+                </div>
+                <div className="form-group">
+                    <label>State Code</label>
+                    <input type="text" className="form-input" value={newCustomer.state_code}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, state_code: e.target.value })}
+                        placeholder="33" />
+                </div>
+            </FormSideSheet>
 
             <DetailViewModal
                 isOpen={isDetailModalOpen}
