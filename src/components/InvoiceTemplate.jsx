@@ -140,7 +140,7 @@ const InvoiceTemplate = React.forwardRef(({ invoice, totals, taxRates, amountToW
                 .inv-header { text-align: center; border-bottom: 1px solid black; padding-bottom: 10px; margin-bottom: 5px; position: relative; }
                 .logo-section { position: absolute; left: 0; top: 0; }
                 .logo-img { width: 80px; height: auto; max-height: 80px; object-fit: contain; }
-                .company-details h1 { font-size: 22px; font-weight: bold; margin: 0; text-transform: uppercase; color: black; }
+                .company-details h1 { font-size: 20px; font-weight: bold; margin: 0; text-transform: uppercase; color: black; }
                 .company-details p { margin: 2px 0; font-size: 11px; }
                 .gst-section { position: absolute; right: 0; top: 0; text-align: right; font-size: 11px; font-weight: bold; }
                 .inv-meta-grid { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid black; margin-bottom: 0; }
