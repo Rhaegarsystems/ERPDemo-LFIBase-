@@ -29,13 +29,13 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
         >
             <div className="sidebar-header">
                 <div className="brand-wrapper">
-                    <img src={lfiLogo} alt="LFI" className="brand-logo" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'contain' }} />
+                    <img src={lfiLogo} alt="RhaegarSystems" className="brand-logo" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'contain' }} />
                     {!isCollapsed && (
                         <span
                             className="brand-subtitle"
                             style={{ marginLeft: '10px' }}
                         >
-                            Little Flower Industries
+                            RhaegarSystems
                         </span>
                     )}
                 </div>

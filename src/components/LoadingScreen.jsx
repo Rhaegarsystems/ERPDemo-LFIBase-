@@ -35,7 +35,7 @@ const LoadingScreen = () => {
             <div className="loading-logo-wrapper">
                 <div className="loading-logo-glow"></div>
                 <div>
-                    <img src={lfiLogo} alt="LFI Logo" className="loading-logo" />
+                    <img src={lfiLogo} alt="RhaegarSystems Logo" className="loading-logo" />
                 </div>
             </div>
 

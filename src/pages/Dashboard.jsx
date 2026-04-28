@@ -96,8 +96,8 @@ const Dashboard = () => {
             {/* Greeting Header */}
             <header className="dashboard-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 0 }}>
                 <div style={{ marginTop: 0 }}>
-                    <h1 className="greeting-text" style={{ marginTop: 0 }}>Welcome back</h1>
-                    <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-muted)', fontSize: '1.1rem' }}>Overview</p>
+                    <h1 className="greeting-text" style={{ marginTop: 0 }}>RhaegarSystems ERP</h1>
+                    <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-muted)', fontSize: '1.1rem' }}>Demo Version - Dashboard Overview</p>
                 </div>
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

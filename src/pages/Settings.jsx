@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { Moon, Sun, Monitor, Info, Code, Calendar, Shield, Database, Download, Upload, Cloud, RefreshCw, Terminal, Copy, Archive, FileText, Check, ChevronRight } from 'lucide-react';
+import { Moon, Sun, Monitor, Info, Code, Calendar, Shield, Database, Download, Upload, Cloud, RefreshCw, Terminal, Copy, Archive, FileText, Check, ChevronRight, Lock } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { save, open } from '@tauri-apps/plugin-dialog';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
@@ -76,35 +76,13 @@ const Settings = () => {
     };
 
     const handleCloudBackup = async () => {
-        if (!isPasswordSet) {
-            setPasswordMode('setup');
-            setBackupPassword('');
-            setConfirmPassword('');
-            setShowPasswordModal(true);
-            return;
-        }
-        setIsSyncing(true);
-        try {
-            const result = await invoke('backup_now');
-            toast.success('Cloud Backup Successful', result);
-            fetchLatestBackupInfo();
-            fetchBackupList();
-        } catch (e) {
-            toast.error('Cloud Backup Failed', String(e));
-        } finally {
-            setIsSyncing(false);
-        }
+        // Disabled in Demo
+        return;
     };
 
     const handleCloudRestore = async () => {
-        if (!isPasswordSet) {
-            setPasswordMode('verify');
-            setBackupPassword('');
-            setShowPasswordModal(true);
-            return;
-        }
-        await fetchBackupList();
-        setIsRestoreModalOpen(true);
+        // Disabled in Demo
+        return;
     };
 
     const fetchLatestBackupInfo = async () => {
@@ -195,7 +173,7 @@ const Settings = () => {
         try {
             const filePath = await save({
                 filters: [{ name: 'Database', extensions: ['db'] }],
-                defaultPath: 'littleflower_backup.db'
+                defaultPath: 'rhaegar_backup.db'
             });
 
             if (filePath) {
@@ -254,7 +232,7 @@ const Settings = () => {
 
     return (
         <div className="page-content">
-            <header className="dashboard-header" style={{ marginBottom: '3rem', marginTop: 0 }}>
+            <header className="dashboard-header" style={{ marginBottom: '6rem', marginTop: 0 }}>
                 <div>
                     <h1 className="greeting-text" style={{ marginTop: 0 }}>Settings</h1>
                     <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-muted)', fontSize: '1.1rem' }}>Personalize your experience and manage data</p>
@@ -376,8 +354,14 @@ const Settings = () => {
                     </div>
                 </div>
 
-                {/* Cloud & Data Section */}
+                {/* Cloud & Data Section - LOCKED IN DEMO */}
                 <div className="settings-section-wrapper">
+                    <div className="locked-overlay">
+                        <div className="locked-message">
+                            <Lock size={16} style={{ marginRight: '8px' }} />
+                            Backup is Locked in Demo
+                        </div>
+                    </div>
                     <h2 className="settings-section-title">
                         <Database size={18} /> Cloud & Data
                     </h2>
@@ -396,11 +380,11 @@ const Settings = () => {
                                 </button>
                             ) : (
                                 <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                    <button onClick={handleCloudBackup} disabled={isSyncing} className="btn-primary-glow" style={{ fontSize: '0.8rem', padding: '0.6rem 1.2rem' }}>
+                                    <button onClick={handleCloudBackup} disabled={true} className="btn-primary-glow" style={{ fontSize: '0.8rem', padding: '0.6rem 1.2rem' }}>
                                         {isSyncing ? <RefreshCw size={14} className="spin" /> : <Upload size={14} />}
                                         Backup Now
                                     </button>
-                                    <button onClick={handleCloudRestore} disabled={isSyncing} className="btn-primary-glow" style={{ fontSize: '0.8rem', padding: '0.6rem 1.2rem', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)' }}>
+                                    <button onClick={handleCloudRestore} disabled={true} className="btn-primary-glow" style={{ fontSize: '0.8rem', padding: '0.6rem 1.2rem', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)' }}>
                                         <Download size={14} /> Restore Now
                                     </button>
                                 </div>
@@ -452,7 +436,7 @@ const Settings = () => {
                                 <FileText size={32} />
                             </div>
                             <div className="about-text">
-                                <h2>Little Flower Industries CRM</h2>
+                                <h2>RhaegarSystems ERP Demo</h2>
                                 <p>Industrial-grade inventory and invoicing management system built for reliability and performance.</p>
                             </div>
                         </div>
@@ -460,7 +444,7 @@ const Settings = () => {
                         <div className="tech-grid-modern">
                             <div className="tech-card-modern" onClick={handleVersionClick} style={{ cursor: 'pointer' }}>
                                 <span className="label">System Version</span>
-                                <span className="value">1.9.0</span>
+                                <span className="value">v1.0 (Demo)</span>
                             </div>
                             <div className="tech-card-modern">
                                 <span className="label">Build Date</span>
@@ -486,7 +470,13 @@ const Settings = () => {
 
                         {/* Developer Mode Tools */}
                         {isDevMode && (
-                            <div style={{ padding: '1.5rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)' }}>
+                            <div style={{ padding: '1.5rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', position: 'relative' }}>
+                                <div className="locked-overlay">
+                                    <div className="locked-message">
+                                        <Lock size={16} style={{ marginRight: '8px' }} />
+                                        Data Export is Locked in Demo
+                                    </div>
+                                </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', color: 'var(--primary)' }}>
                                     <Terminal size={18} />
                                     <p style={{ margin: 0, fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem' }}>Developer Mode Active</p>
@@ -502,11 +492,11 @@ const Settings = () => {
                                     </div>
                                     
                                     <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                        <button className="btn-ghost" onClick={handleLocalBackup} style={{ flex: 1 }}><Archive size={14} /> Export DB</button>
-                                        <button className="btn-ghost" onClick={handleLocalRestore} style={{ flex: 1 }}><Upload size={14} /> Import DB</button>
+                                        <button className="btn-ghost" onClick={handleLocalBackup} style={{ flex: 1 }} disabled={true}><Archive size={14} /> Export DB</button>
+                                        <button className="btn-ghost" onClick={handleLocalRestore} style={{ flex: 1 }} disabled={true}><Upload size={14} /> Import DB</button>
                                     </div>
                                     
-                                    <button className="btn-ghost" onClick={() => setIsResetModalOpen(true)} style={{ color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+                                    <button className="btn-ghost" onClick={() => setIsResetModalOpen(true)} style={{ color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }} disabled={true}>
                                         <RefreshCw size={14} /> Wipe All Local Data
                                     </button>
                                 </div>
@@ -530,7 +520,7 @@ const Settings = () => {
                             >
                                 RHAEGARSYSTEMS
                             </p>
-                            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '1rem' }}>© 2026 Little Flower Industries. All rights reserved.</p>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '1rem' }}>© 2026 RhaegarSystems. All rights reserved.</p>
                         </div>
                     </div>
                 </div>

@@ -14,14 +14,14 @@ const InvoiceTemplate = React.forwardRef(({ invoice, totals, taxRates, amountToW
                     <div className="inv-header">
                         <div className="logo-section"><img src={lfiLogo} alt="LFI Logo" className="logo-img" /></div>
                         <div className="company-details">
-                            <h1>LITTLE FLOWER INDUSTRIES</h1>
-                            <p>ISO 9001-2015 COMPANY</p>
-                            <p>No:209, new tiny sector, ambattur industrial estate, chennai-600058</p>
-                            <p>Email: lfijustus71@gmail.com</p>
+                            <h1>RHAEGARSYSTEMS</h1>
+                            <p>ERP DEMO VERSION</p>
+                            <p>Industrial Estate, Chennai-600058</p>
+                            <p>Email: contact@rhaegarsystems.com</p>
                         </div>
                         <div className="gst-section">
-                            <p>GSTIN: 33AHPPG8152P1ZR</p>
-                            <p style={{ fontSize: '13px' }}>Cell: 9444104884</p>
+                            <p>GSTIN: DEMO_VERSION_ONLY</p>
+                            <p style={{ fontSize: '13px' }}>Cell: +91 XXXXXXXXXX</p>
                         </div>
                     </div>
 
@@ -127,7 +127,7 @@ const InvoiceTemplate = React.forwardRef(({ invoice, totals, taxRates, amountToW
                         <p style={{ fontStyle: 'italic', fontWeight: 'bold', fontSize: '22px', margin: 0 }}>Received in good condition</p>
                     </div>
                     <div className="sign-box" style={{ marginLeft: 'auto', marginRight: '50px' }}>
-                        <p style={{ fontWeight: 'bold', fontSize: '16px' }}>For LITTLE FLOWER INDUSTRIES</p>
+                        <p style={{ fontWeight: 'bold', fontSize: '16px' }}>For RHAEGARSYSTEMS</p>
                         <br /><br />
                         <p>Authorised Signature</p>
                     </div>

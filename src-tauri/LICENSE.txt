@@ -1,31 +1,31 @@
-END USER LICENSE AGREEMENT
+RhaegarSystems ERP
+LICENSE AGREEMENT
 
-Little Flower Industries ERP
-Version 1.1.0
+Copyright © 2026 RhaegarSystems. All rights reserved.
 
-Copyright © 2026 Little Flower Industries. All rights reserved.
-Built and maintained by Rhaegarsystems.
-
-LICENSE TERMS:
+Permission is hereby granted to the sales team and authorized demo users to use 
+this software for demonstration purposes only.
 
 1. GRANT OF LICENSE
-   This software is licensed, not sold. Little Flower Industries grants you 
-   a non-exclusive, non-transferable license to use this software.
+   This software is licensed, not sold. RhaegarSystems grants you 
+   a non-exclusive, non-transferable license to use the RhaegarSystems ERP Demo 
+   application on any compatible device.
 
 2. RESTRICTIONS
-   - You may not distribute, sell, or sublicense this software
-   - You may not reverse engineer, decompile, or disassemble the software
-   - You may not remove any proprietary notices from the software
+   You may not:
+   - Modify, reverse engineer, decompile, or disassemble the software.
+   - Redistribute, sell, or rent the software to third parties.
+   - Use the software for commercial production data entry beyond demo limits.
 
-3. DATA STORAGE
-   All data is stored locally on your computer using SQLite database.
-   No data is transmitted to external servers.
+3. TERMINATION
+   This license is effective until terminated. Your rights under this license 
+   will terminate automatically without notice from RhaegarSystems if you fail 
+   to comply with any term(s) of this license.
 
-4. DISCLAIMER OF WARRANTY
-   This software is provided "AS IS" without warranty of any kind.
+4. DISCLAIMER OF WARRANTIES
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
+   OR IMPLIED.
 
 5. LIMITATION OF LIABILITY
-   In no event shall Little Flower Industries or Rhaegarsystems be liable 
-   for any damages arising from the use of this software.
-
-By installing this software, you agree to these terms.
+   In no event shall RhaegarSystems be liable for any special, 
+   incidental, indirect, or consequential damages whatsoever.

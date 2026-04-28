@@ -69,13 +69,17 @@ const Customers = () => {
     ];
 
     const handleSave = async () => {
+        if (!newCustomer.id && data.length >= 10) {
+            toast.error('Demo Limit Attained', 'You can only add up to 10 customers in this demo version.');
+            return;
+        }
         try {
             if (newCustomer.id) {
                 await invoke('update_customer', { customer: newCustomer });
                 toast.success('Updated', 'Customer details updated.');
             } else {
                 await invoke('add_customer', { customer: newCustomer });
-                toast.success('Added', 'New customer added.');
+                toast.success('Added', 'New customer added to RhaegarSystems ERP.');
             }
             setIsModalOpen(false);
             fetchCustomers();

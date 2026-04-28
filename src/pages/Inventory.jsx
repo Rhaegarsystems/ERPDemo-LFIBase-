@@ -124,6 +124,10 @@ const Inventory = () => {
   ];
 
   const handleSave = async () => {
+    if (!newItem.id && items.length >= 10) {
+      toast.error('Demo Limit Attained', 'You can only add up to 10 parts in this demo version.');
+      return;
+    }
     try {
       const partNum = newItem.part_number === undefined ? '' : String(newItem.part_number).trim();
       const itemToSave = {
@@ -140,7 +144,7 @@ const Inventory = () => {
         toast.success('Updated!', `${newItem.name} has been updated.`);
       } else {
         await invoke('add_item', { item: itemToSave });
-        toast.success('Added!', `${newItem.name} added to inventory.`);
+        toast.success('Added!', `${newItem.name} added to RhaegarSystems ERP.`);
       }
       setIsModalOpen(false);
       fetchInventory();

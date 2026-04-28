@@ -302,6 +302,17 @@ const CreateInvoice = () => {
     };
 
     const handleSave = async () => {
+        if (!id) {
+            try {
+                const existing = await invoke('get_invoices');
+                if (existing.length >= 10) {
+                    toast.error('Demo Limit Attained', 'You can only create up to 10 invoices in this demo version.');
+                    return;
+                }
+            } catch (e) {
+                console.error("Failed to check limit:", e);
+            }
+        }
         try {
             await invoke('save_invoice', {
                 invoice: {
@@ -327,7 +338,7 @@ const CreateInvoice = () => {
                     pincode: invoice.pincode
                 }
             });
-            toast.success('Invoice Saved', 'Invoice saved successfully.');
+            toast.success('Invoice Saved', 'Invoice saved to RhaegarSystems ERP.');
             setTimeout(() => navigate('/invoices'), 1500);
         } catch (e) {
             toast.error('Save Failed', String(e));
@@ -802,16 +813,16 @@ const CreateInvoice = () => {
                         <h2 style={{ fontSize: '1.5rem', margin: 0, textTransform: 'uppercase', letterSpacing: '2px', borderBottom: '2px solid #000', display: 'inline-block', paddingBottom: '2px' }}>INVOICE</h2>
                     </div>
                     <div className="inv-header">
-                        <div className="logo-section"><img src={lfiLogo} alt="LFI Logo" className="logo-img" /></div>
+                        <div className="logo-section"><img src={lfiLogo} alt="RhaegarSystems Logo" className="logo-img" /></div>
                         <div className="company-details">
-                            <h1>LITTLE FLOWER INDUSTRIES</h1>
-                            <p>ISO 9001-2015 COMPANY</p>
-                            <p>No:209, new tiny sector, ambattur industrial estate, chennai-600058</p>
-                            <p>Email: lfijustus71@gmail.com</p>
+                            <h1>RHAEGARSYSTEMS</h1>
+                            <p>ERP DEMO VERSION</p>
+                            <p>Industrial Estate, Chennai-600058</p>
+                            <p>Email: contact@rhaegarsystems.com</p>
                         </div>
                         <div className="gst-section">
-                            <p>GSTIN: 33AHPPG8152P1ZR</p>
-                            <p style={{ fontSize: '13px' }}>Cell: 9444104884</p>
+                            <p>GSTIN: DEMO_VERSION_ONLY</p>
+                            <p style={{ fontSize: '13px' }}>Cell: +91 XXXXXXXXXX</p>
                         </div>
                     </div>
 
@@ -918,7 +929,7 @@ const CreateInvoice = () => {
                             <p style={{ fontStyle: 'italic', fontWeight: 'bold', fontSize: '22px', margin: 0 }}>Received in good condition</p>
                         </div>
                         <div className="sign-box" style={{ marginLeft: 'auto', marginRight: '50px' }}>
-                            <p style={{ fontWeight: 'bold', fontSize: '16px' }}>For LITTLE FLOWER INDUSTRIES</p>
+                            <p style={{ fontWeight: 'bold', fontSize: '16px' }}>For RHAEGARSYSTEMS</p>
                             <br /><br />
                             <p>Authorised Signature</p>
                         </div>

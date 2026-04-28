@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Little Flower Industries ERP",
+  "productName": "RhaegarSystems ERP",
   "version": "1.9.0",
-  "identifier": "com.rhaegarsystems.littleflower",
+  "identifier": "com.rhaegarsystems.erp",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Little Flower Industries ERP",
+        "title": "RhaegarSystems ERP",
         "width": 1280,
         "height": 800,
         "minWidth": 900,
@@ -44,7 +44,7 @@
       "icons/icon.ico"
     ],
     "publisher": "Rhaegarsystems",
-    "shortDescription": "ERP solution for Little Flower Industries",
+    "shortDescription": "ERP solution for RhaegarSystems",
     "longDescription": "A comprehensive Enterprise Resource Planning solution for managing inventory, customers, invoicing, and stock movements.",
     "category": "Business",
     "windows": {

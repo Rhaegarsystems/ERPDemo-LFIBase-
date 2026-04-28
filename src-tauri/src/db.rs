@@ -370,7 +370,7 @@ pub struct RevenuePoint {
 }
 
 pub fn get_revenue_history(conn: &Connection) -> Result<Vec<RevenuePoint>> {
-    let mut stmt = conn.prepare("SELECT date, SUM(amount) FROM invoices WHERE date >= date(\"now\", \"-30 days\") GROUP BY date ORDER BY date")?;
+    let mut stmt = conn.prepare("SELECT date, SUM(amount) FROM invoices WHERE date >= date('now', '-180 days') GROUP BY date ORDER BY date")?;
     let iter = stmt.query_map([], |row| {
         Ok(RevenuePoint {
             date: row.get(0)?,
