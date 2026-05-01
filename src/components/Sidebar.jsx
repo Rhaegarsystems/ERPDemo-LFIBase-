@@ -1,6 +1,5 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import lfiLogo from '../assets/logo_ai.png';
 import {
     LayoutDashboard,
     Package,
@@ -29,13 +28,13 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
         >
             <div className="sidebar-header">
                 <div className="brand-wrapper">
-                    <img src={lfiLogo} alt="RhaegarSystems" className="brand-logo" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'contain' }} />
+                    <img src="/Logo%203.png" alt="RhaegarSystems" className="brand-logo" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'contain' }} />
                     {!isCollapsed && (
                         <span
                             className="brand-subtitle"
                             style={{ marginLeft: '10px' }}
                         >
-                            RhaegarSystems
+                            RhaegarSystems ERP Demo
                         </span>
                     )}
                 </div>

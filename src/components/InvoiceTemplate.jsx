@@ -1,5 +1,4 @@
 import React from 'react';
-import lfiLogo from '../assets/Logo.png';
 
 const InvoiceTemplate = React.forwardRef(({ invoice, totals, taxRates, amountToWords }, ref) => {
     if (!invoice) return null;
@@ -12,7 +11,7 @@ const InvoiceTemplate = React.forwardRef(({ invoice, totals, taxRates, amountToW
                         <h2 style={{ fontSize: '1.5rem', margin: 0, textTransform: 'uppercase', letterSpacing: '2px', borderBottom: '2px solid #000', display: 'inline-block', paddingBottom: '2px' }}>INVOICE</h2>
                     </div>
                     <div className="inv-header">
-                        <div className="logo-section"><img src={lfiLogo} alt="LFI Logo" className="logo-img" /></div>
+                        <div className="logo-section"><img src="/Logo%203.png" alt="RhaegarSystems Logo" className="logo-img" /></div>
                         <div className="company-details">
                             <h1>RHAEGARSYSTEMS</h1>
                             <p>ERP DEMO VERSION</p>
@@ -138,7 +137,7 @@ const InvoiceTemplate = React.forwardRef(({ invoice, totals, taxRates, amountToW
                 .invoice-paper { background: white; color: black; width: 200mm; min-height: 297mm; padding: 10mm; margin: 0 auto; border: 1px solid #ddd; font-family: 'Times New Roman', serif; position: relative; }
                 .inv-top-section { border: 1px solid black; margin-bottom: 0; padding: 5px; }
                 .inv-header { text-align: center; border-bottom: 1px solid black; padding-bottom: 10px; margin-bottom: 5px; position: relative; }
-                .logo-section { position: absolute; left: 0; top: 0; }
+                .logo-section { position: absolute; left: 15px; top: 0; transform: translateY(-20%); }
                 .logo-img { width: 80px; height: auto; max-height: 80px; object-fit: contain; }
                 .company-details h1 { font-size: 20px; font-weight: bold; margin: 0; text-transform: uppercase; color: black; }
                 .company-details p { margin: 2px 0; font-size: 11px; }

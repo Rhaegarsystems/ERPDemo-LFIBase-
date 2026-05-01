@@ -9,7 +9,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { toWords } from 'number-to-words';
 import PartSelectorModal from '../components/PartSelectorModal';
-import CustomerSelectorModal from '../components/CustomerSelectorModal';
+import FormSideSheet from '../components/FormSideSheet';
 import { useToast } from '../components/ToastProvider';
 import { useTheme } from '../context/ThemeContext';
 import '../styles/PageCommon.css';
@@ -165,7 +165,9 @@ const CreateInvoice = () => {
     const [taxRates, setTaxRates] = useState({ cgst: 9, sgst: 9 });
 
     const [isPartModalOpen, setIsPartModalOpen] = useState(false);
-    const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+    const [isHeaderSheetOpen, setIsHeaderSheetOpen] = useState(false);
+    const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+    const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
     const toast = useToast();
     const [newItem, setNewItem] = useState({
         part_number: '',
@@ -459,8 +461,8 @@ const CreateInvoice = () => {
         <div className="page-container">
             <header className="dashboard-header no-print" style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 0 }}>
                 <div className="flex items-center gap-4" style={{ marginTop: 0 }}>
-                    <button 
-                        className="back-button-circular" 
+                    <button
+                        className="back-button-circular"
                         onClick={() => navigate('/invoices')}
                         title="Back to Invoices"
                     >
@@ -472,10 +474,26 @@ const CreateInvoice = () => {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <button 
-                        className="btn-primary-glow" 
-                        onClick={handleSave} 
-                        style={{ 
+                    <button
+                        className="btn-primary-glow"
+                        onClick={() => setIsHeaderSheetOpen(true)}
+                        style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: 0
+                        }}
+                        title="Edit Invoice Details"
+                    >
+                        <Plus size={18} />
+                    </button>
+                    <button
+                        className="btn-primary-glow"
+                        onClick={handleSave}
+                        style={{
                             background: '#10b981',
                             width: '40px',
                             height: '40px',
@@ -489,10 +507,10 @@ const CreateInvoice = () => {
                     >
                         <Save size={18} />
                     </button>
-                    <button 
-                        className="btn-primary-glow" 
+                    <button
+                        className="btn-primary-glow"
                         onClick={handlePrint}
-                        style={{ 
+                        style={{
                             width: '40px',
                             height: '40px',
                             borderRadius: '50%',
@@ -508,150 +526,8 @@ const CreateInvoice = () => {
                 </div>
             </header>
 
-            {/* Editor Controls */}
+            {/* Editor Controls - Line Items Only */}
             <div className="card mb-4 no-print p-4">
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
-                    <div className="form-group">
-                        <label>Invoice No</label>
-                        <input type="text" className="form-input" value={invoice.id}
-                            onChange={e => setInvoice({ ...invoice, id: e.target.value })} placeholder="INV-001" />
-                    </div>
-                    <div className="form-group">
-                        <label>Customer</label>
-                        <div
-                            onClick={() => setIsCustomerModalOpen(true)}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                padding: '0.5rem 0.75rem',
-                                background: 'var(--bg-tertiary)',
-                                border: '1px solid var(--border)',
-                                borderRadius: 'var(--radius-md)',
-                                cursor: 'pointer',
-                                color: invoice.client_name ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                minHeight: '38px'
-                            }}
-                        >
-                            <Search size={14} />
-                            <span>{invoice.client_name || 'Click to select customer...'}</span>
-                        </div>
-                    </div>
-                    <div className="form-group">
-                        <label>Date (DD-MM-YYYY)</label>
-                        <input type="text" className="form-input"
-                            value={invoice.date}
-                            placeholder="DD-MM-YYYY"
-                            onChange={e => {
-                                const formatted = formatDateInput(e.target.value);
-                                setInvoice({ ...invoice, date: formatted });
-                            }} />
-                    </div>
-                    <div className="form-group">
-                        <label>Vendor Code</label>
-                        <input type="text" className="form-input" value={invoice.vendor_code}
-                            onChange={e => setInvoice({ ...invoice, vendor_code: e.target.value })} placeholder="VC-001" />
-                    </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
-                    <div className="form-group">
-                        <label>State</label>
-                        <input type="text" className="form-input" value={invoice.state}
-                            onChange={e => setInvoice({ ...invoice, state: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                        <label>Pincode</label>
-                        <input type="text" className="form-input" value={invoice.pincode}
-                            onChange={e => setInvoice({ ...invoice, pincode: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                        <label>State Code</label>
-                        <input type="text" className="form-input" value={invoice.state_code}
-                            onChange={e => setInvoice({ ...invoice, state_code: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                        <label>Your DC No</label>
-                        <input type="text" className="form-input" value={invoice.dc_no}
-                            onChange={e => setInvoice({ ...invoice, dc_no: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                        <label>Your DC Date</label>
-                        <input type="text" className="form-input"
-                            value={invoice.dc_date}
-                            placeholder="DD-MM-YYYY"
-                            onChange={e => setInvoice({ ...invoice, dc_date: formatDateInput(e.target.value) })} />
-                    </div>
-                    <div className="form-group">
-                        <label>PO No</label>
-                        <input type="text" className="form-input" value={invoice.po_no}
-                            onChange={e => setInvoice({ ...invoice, po_no: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                        <label>PO Date</label>
-                        <input type="text" className="form-input"
-                            value={invoice.po_date}
-                            placeholder="DD-MM-YYYY"
-                            onChange={e => setInvoice({ ...invoice, po_date: formatDateInput(e.target.value) })} />
-                    </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
-                    <div className="form-group">
-                        <label>Transport Mode</label>
-                        <input type="text" className="form-input" value={invoice.transport_mode}
-                            onChange={e => setInvoice({ ...invoice, transport_mode: e.target.value })} placeholder="By Road" />
-                    </div>
-                    <div className="form-group">
-                        <label>CGST Rate (%)</label>
-                        <input type="number" className="form-input" value={taxRates.cgst}
-                            onChange={e => setTaxRates({ ...taxRates, cgst: e.target.value })} placeholder="9" />
-                    </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
-                    <div className="form-group">
-                        <label>SAC Code</label>
-                        <input type="text" className="form-input" value={invoice.sac_code}
-                            onChange={e => setInvoice({ ...invoice, sac_code: e.target.value })} placeholder="Enter SAC" />
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', marginTop: '0.5rem' }}>
-                            <input type="checkbox" checked={invoice.invoice_type.includes('Service')}
-                                onChange={() => {
-                                    let types = invoice.invoice_type.split(',').map(t => t.trim()).filter(t => t);
-                                    if (types.includes('Service')) {
-                                        types = types.filter(t => t !== 'Service');
-                                    } else {
-                                        types.push('Service');
-                                    }
-                                    setInvoice({ ...invoice, invoice_type: types.join(', ') });
-                                }} /> Service (SAC)
-                        </label>
-                    </div>
-                    <div className="form-group">
-                        <label>HSN Code</label>
-                        <input type="text" className="form-input" value={invoice.hsn_code}
-                            onChange={e => setInvoice({ ...invoice, hsn_code: e.target.value })} placeholder="Enter HSN" />
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', marginTop: '0.5rem' }}>
-                            <input type="checkbox" checked={invoice.invoice_type.includes('Sale')}
-                                onChange={() => {
-                                    let types = invoice.invoice_type.split(',').map(t => t.trim()).filter(t => t);
-                                    if (types.includes('Sale')) {
-                                        types = types.filter(t => t !== 'Sale');
-                                    } else {
-                                        types.push('Sale');
-                                    }
-                                    setInvoice({ ...invoice, invoice_type: types.join(', ') });
-                                }} /> Sale (HSN)
-                        </label>
-                    </div>
-                    <div className="form-group">
-                        <label>ASN No</label>
-                        <input type="text" className="form-input" value={invoice.asn_no}
-                            onChange={e => setInvoice({ ...invoice, asn_no: e.target.value })} placeholder="Enter ASN No" />
-                    </div>
-                    <div className="form-group">
-                        <label>SGST Rate (%)</label>
-                        <input type="number" className="form-input" value={taxRates.sgst}
-                            onChange={e => setTaxRates({ ...taxRates, sgst: e.target.value })} placeholder="9" />
-                    </div>
-                </div>
 
                 {/* Inline Add Line Item Section */}
                 <div style={{ background: 'var(--bg-tertiary)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1rem', border: '1px solid var(--border)' }}>
@@ -805,6 +681,198 @@ const CreateInvoice = () => {
                 </div>
             </div >
 
+            {/* Invoice Header SideSheet */}
+            <FormSideSheet
+                isOpen={isHeaderSheetOpen}
+                onClose={() => setIsHeaderSheetOpen(false)}
+                title="Invoice Details"
+            >
+                {/* Header Information */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <h4 style={{ margin: '0 0 1rem 0', color: 'var(--primary)', fontSize: '0.9rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Header Information</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div className="form-group">
+                            <label>Invoice No</label>
+                            <input type="text" className="form-input" value={invoice.id}
+                                onChange={e => setInvoice({ ...invoice, id: e.target.value })} placeholder="INV-001" />
+                        </div>
+                        <div className="form-group">
+                            <label>Date (DD-MM-YYYY)</label>
+                            <input type="text" className="form-input"
+                                value={invoice.date}
+                                placeholder="DD-MM-YYYY"
+                                onChange={e => {
+                                    const formatted = formatDateInput(e.target.value);
+                                    setInvoice({ ...invoice, date: formatted });
+                                }} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Customer Details */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <h4 style={{ margin: '0 0 1rem 0', color: 'var(--primary)', fontSize: '0.9rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Customer Details</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginBottom: '1rem' }}>
+                        <div className="form-group" style={{ position: 'relative' }}>
+                            <label>Customer</label>
+                            <div style={{ position: 'relative' }}>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    value={customerSearchTerm}
+                                    onChange={(e) => {
+                                        setCustomerSearchTerm(e.target.value);
+                                        setShowCustomerDropdown(true);
+                                    }}
+                                    onFocus={() => setShowCustomerDropdown(true)}
+                                    placeholder={invoice.client_name || "Search customer..."}
+                                />
+                                {showCustomerDropdown && (
+                                    <div className="inline-dropdown">
+                                        {customers
+                                            .filter(c => c.name.toLowerCase().includes(customerSearchTerm.toLowerCase()))
+                                            .slice(0, 5)
+                                            .map((customer, i) => (
+                                                <div
+                                                    key={i}
+                                                    className="dropdown-item"
+                                                    onClick={() => {
+                                                        handleCustomerSelect(customer);
+                                                        setCustomerSearchTerm('');
+                                                        setShowCustomerDropdown(false);
+                                                    }}
+                                                >
+                                                    {customer.name}
+                                                </div>
+                                            ))
+                                        }
+                                        {customers.filter(c => c.name.toLowerCase().includes(customerSearchTerm.toLowerCase())).length === 0 && (
+                                            <div className="dropdown-item" style={{ cursor: 'default', opacity: 0.5 }}>
+                                                No customers found
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div className="form-group">
+                            <label>Vendor Code</label>
+                            <input type="text" className="form-input" value={invoice.vendor_code}
+                                onChange={e => setInvoice({ ...invoice, vendor_code: e.target.value })} placeholder="VC-001" />
+                        </div>
+                        <div className="form-group">
+                            <label>State</label>
+                            <input type="text" className="form-input" value={invoice.state}
+                                onChange={e => setInvoice({ ...invoice, state: e.target.value })} />
+                        </div>
+                        <div className="form-group">
+                            <label>State Code</label>
+                            <input type="text" className="form-input" value={invoice.state_code}
+                                onChange={e => setInvoice({ ...invoice, state_code: e.target.value })} />
+                        </div>
+                        <div className="form-group">
+                            <label>Pincode</label>
+                            <input type="text" className="form-input" value={invoice.pincode}
+                                onChange={e => setInvoice({ ...invoice, pincode: e.target.value })} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Logistics & Reference */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <h4 style={{ margin: '0 0 1rem 0', color: 'var(--primary)', fontSize: '0.9rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Logistics & Reference</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div className="form-group">
+                            <label>Transport Mode</label>
+                            <input type="text" className="form-input" value={invoice.transport_mode}
+                                onChange={e => setInvoice({ ...invoice, transport_mode: e.target.value })} placeholder="By Road" />
+                        </div>
+                        <div className="form-group">
+                            <label>ASN No</label>
+                            <input type="text" className="form-input" value={invoice.asn_no}
+                                onChange={e => setInvoice({ ...invoice, asn_no: e.target.value })} placeholder="Enter ASN No" />
+                        </div>
+                        <div className="form-group">
+                            <label>Your DC No</label>
+                            <input type="text" className="form-input" value={invoice.dc_no}
+                                onChange={e => setInvoice({ ...invoice, dc_no: e.target.value })} />
+                        </div>
+                        <div className="form-group">
+                            <label>Your DC Date</label>
+                            <input type="text" className="form-input"
+                                value={invoice.dc_date}
+                                placeholder="DD-MM-YYYY"
+                                onChange={e => setInvoice({ ...invoice, dc_date: formatDateInput(e.target.value) })} />
+                        </div>
+                        <div className="form-group">
+                            <label>PO No</label>
+                            <input type="text" className="form-input" value={invoice.po_no}
+                                onChange={e => setInvoice({ ...invoice, po_no: e.target.value })} />
+                        </div>
+                        <div className="form-group">
+                            <label>PO Date</label>
+                            <input type="text" className="form-input"
+                                value={invoice.po_date}
+                                placeholder="DD-MM-YYYY"
+                                onChange={e => setInvoice({ ...invoice, po_date: formatDateInput(e.target.value) })} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Tax & Compliance */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <h4 style={{ margin: '0 0 1rem 0', color: 'var(--primary)', fontSize: '0.9rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Tax & Compliance</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div className="form-group">
+                            <label>SAC Code</label>
+                            <input type="text" className="form-input" value={invoice.sac_code}
+                                onChange={e => setInvoice({ ...invoice, sac_code: e.target.value })} placeholder="Enter SAC" />
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginTop: '0.5rem' }}>
+                                <input type="checkbox" checked={invoice.invoice_type.includes('Service')}
+                                    onChange={() => {
+                                        let types = invoice.invoice_type.split(',').map(t => t.trim()).filter(t => t);
+                                        if (types.includes('Service')) {
+                                            types = types.filter(t => t !== 'Service');
+                                        } else {
+                                            types.push('Service');
+                                        }
+                                        setInvoice({ ...invoice, invoice_type: types.join(', ') });
+                                    }} /> <span style={{ fontSize: '0.85rem' }}>Service (SAC)</span>
+                            </label>
+                        </div>
+                        <div className="form-group">
+                            <label>HSN Code</label>
+                            <input type="text" className="form-input" value={invoice.hsn_code}
+                                onChange={e => setInvoice({ ...invoice, hsn_code: e.target.value })} placeholder="Enter HSN" />
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginTop: '0.5rem' }}>
+                                <input type="checkbox" checked={invoice.invoice_type.includes('Sale')}
+                                    onChange={() => {
+                                        let types = invoice.invoice_type.split(',').map(t => t.trim()).filter(t => t);
+                                        if (types.includes('Sale')) {
+                                            types = types.filter(t => t !== 'Sale');
+                                        } else {
+                                            types.push('Sale');
+                                        }
+                                        setInvoice({ ...invoice, invoice_type: types.join(', ') });
+                                    }} /> <span style={{ fontSize: '0.85rem' }}>Sale (HSN)</span>
+                            </label>
+                        </div>
+                        <div className="form-group">
+                            <label>CGST Rate (%)</label>
+                            <input type="number" className="form-input" value={taxRates.cgst}
+                                onChange={e => setTaxRates({ ...taxRates, cgst: e.target.value })} placeholder="9" />
+                        </div>
+                        <div className="form-group">
+                            <label>SGST Rate (%)</label>
+                            <input type="number" className="form-input" value={taxRates.sgst}
+                                onChange={e => setTaxRates({ ...taxRates, sgst: e.target.value })} placeholder="9" />
+                        </div>
+                    </div>
+                </div>
+            </FormSideSheet>
+
             {/* Print Layout */}
             <div className="print-container-wrapper">
                 <div className="invoice-paper" ref={invoiceRef}>
@@ -813,7 +881,7 @@ const CreateInvoice = () => {
                         <h2 style={{ fontSize: '1.5rem', margin: 0, textTransform: 'uppercase', letterSpacing: '2px', borderBottom: '2px solid #000', display: 'inline-block', paddingBottom: '2px' }}>INVOICE</h2>
                     </div>
                     <div className="inv-header">
-                        <div className="logo-section"><img src={lfiLogo} alt="RhaegarSystems Logo" className="logo-img" /></div>
+                        <div className="logo-section"><img src="/Logo%203.png" alt="RhaegarSystems Logo" className="logo-img" /></div>
                         <div className="company-details">
                             <h1>RHAEGARSYSTEMS</h1>
                             <p>ERP DEMO VERSION</p>
@@ -941,7 +1009,7 @@ const CreateInvoice = () => {
                 .invoice-paper { background: white; color: black; width: 200mm; min-height: 297mm; padding: 10mm; margin: 0 auto; border: 1px solid #ddd; font-family: 'Times New Roman', serif; position: relative; }
                 .inv-top-section { border: 1px solid black; margin-bottom: 0; padding: 5px; }
                 .inv-header { text-align: center; border-bottom: 1px solid black; padding-bottom: 10px; margin-bottom: 5px; position: relative; }
-                .logo-section { position: absolute; left: 0; top: 0; }
+                .logo-section { position: absolute; left: 15px; top: 0; transform: translateY(-20%); }
                 .logo-img { width: 80px; height: auto; max-height: 80px; object-fit: contain; }
                 .company-details h1 { font-size: 20px; font-weight: bold; margin: 0; text-transform: uppercase; color: black; }
                 .company-details p { margin: 2px 0; font-size: 11px; }
@@ -973,13 +1041,6 @@ const CreateInvoice = () => {
                     onClose={() => setIsPartModalOpen(false)}
                     inventory={inventory}
                     onSelect={handlePartSelect}
-                />
-
-                <CustomerSelectorModal
-                    isOpen={isCustomerModalOpen}
-                    onClose={() => setIsCustomerModalOpen(false)}
-                    customers={customers}
-                    onSelect={handleCustomerSelect}
                 />
 
                 {/* PDF Progress Toast */}
@@ -1028,7 +1089,7 @@ const CreateInvoice = () => {
                     </motion.div>
                 )}
             </div>
-        </div >
+        </div>
     );
 };
 

@@ -35,7 +35,7 @@
     letter-spacing: -0.02em;
 }
 
-/* LFI italic logo text */
+/* RhaegarSystems logo */
 .brand-logo {
     font-size: 1.6rem;
     font-weight: 800;
@@ -56,12 +56,12 @@
 
 .brand-subtitle {
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: 700;
     color: var(--text-secondary);
     letter-spacing: 0.03em;
     text-transform: uppercase;
     overflow: hidden;
-    font-style: italic;
+    font-style: normal;
 }
 
 .sidebar.collapsed .sidebar-header {

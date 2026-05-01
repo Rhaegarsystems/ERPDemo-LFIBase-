@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    littleflower_lib::run()
+    rhaegarsystems_erp_demo_lib::run()
 }

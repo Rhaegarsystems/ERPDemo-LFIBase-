@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import lfiLogo from '../assets/logo_ai.png';
 import '../styles/LoadingScreen.css';
 
 const LoadingScreen = () => {
@@ -31,13 +30,13 @@ const LoadingScreen = () => {
                 style={{ bottom: '15%', right: '10%', background: 'radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, rgba(99, 102, 241, 0) 70%)' }}
             />
 
-            {/* Logo Section */}
-            <div className="loading-logo-wrapper">
-                <div className="loading-logo-glow"></div>
-                <div>
-                    <img src={lfiLogo} alt="RhaegarSystems Logo" className="loading-logo" />
-                </div>
-            </div>
+             {/* Logo Section */}
+             <div className="loading-logo-wrapper">
+                 <div className="loading-logo-glow"></div>
+                 <div>
+                     <img src="/Logo%203.png" alt="RhaegarSystems Logo" className="loading-logo" />
+                 </div>
+             </div>
 
             {/* Progress Bar Section */}
             <div className="loading-progress-container" style={{ width: 240, opacity: 1 }}>

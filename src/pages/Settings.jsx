@@ -7,6 +7,7 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import Modal from '../components/Modal';
 import { useToast } from '../components/ToastProvider';
+import brandLogo from '../assets/Logo.png';
 import '../styles/PageCommon.css';
 import '../styles/Settings.css';
 
@@ -14,10 +15,13 @@ const Settings = () => {
     const { theme, setTheme, toggleTheme, variant, changeVariant, autoOpenPdf, toggleAutoOpenPdf } = useTheme();
     const toast = useToast();
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-    const [isConnected, setIsConnected] = useState(false);
-    const [isSyncing, setIsSyncing] = useState(false);
     const [latestBackup, setLatestBackup] = useState(null);
-    const [backupList, setBackupList] = useState([]);
+    // Fake backup list for demo
+    const [backupList] = useState([
+        { key: 'backup_20260501_120000.enc', last_modified: '2026-05-01T12:00:00' },
+        { key: 'backup_20260430_180000.enc', last_modified: '2026-04-30T18:00:00' },
+        { key: 'backup_20260429_090000.enc', last_modified: '2026-04-29T09:00:00' },
+    ]);
     const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
     const [isRestoring, setIsRestoring] = useState(false);
     const [selectedBackup, setSelectedBackup] = useState(null);
@@ -103,21 +107,7 @@ const Settings = () => {
         }
     };
 
-    useEffect(() => {
-        const checkConnection = async () => {
-            try {
-                const connected = await invoke('is_google_drive_connected');
-                setIsConnected(connected);
-                if (connected) {
-                    fetchLatestBackupInfo();
-                    fetchBackupList();
-                }
-            } catch (e) {
-                console.error("Failed to check Cloud configuration:", e);
-            }
-        };
-        checkConnection();
-    }, []);
+
 
     useEffect(() => {
         if (isDevMode) {
@@ -354,7 +344,6 @@ const Settings = () => {
                     </div>
                 </div>
 
-                {/* Cloud & Data Section - LOCKED IN DEMO */}
                 <div className="settings-section-wrapper">
                     <div className="locked-overlay">
                         <div className="locked-message">
@@ -365,63 +354,46 @@ const Settings = () => {
                     <h2 className="settings-section-title">
                         <Database size={18} /> Cloud & Data
                     </h2>
-                    
+
                     <div className="settings-row">
                         <div className="settings-row-info">
                             <p className="settings-row-label">Cloud Synchronization</p>
                             <p className="settings-row-description">
-                                {isConnected ? 'Securely back up your data to the cloud.' : 'Connect your cloud account to enable automated backups.'}
+                                Cloud backup and restore features are available in the full version.
                             </p>
                         </div>
                         <div className="settings-row-action">
-                            {!isConnected ? (
-                                <button className="btn-ghost" style={{ gap: '8px' }}>
-                                    <Shield size={14} /> Configure Access
-                                </button>
-                            ) : (
-                                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                    <button onClick={handleCloudBackup} disabled={true} className="btn-primary-glow" style={{ fontSize: '0.8rem', padding: '0.6rem 1.2rem' }}>
-                                        {isSyncing ? <RefreshCw size={14} className="spin" /> : <Upload size={14} />}
-                                        Backup Now
-                                    </button>
-                                    <button onClick={handleCloudRestore} disabled={true} className="btn-primary-glow" style={{ fontSize: '0.8rem', padding: '0.6rem 1.2rem', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)' }}>
-                                        <Download size={14} /> Restore Now
-                                    </button>
-                                </div>
-                            )}
+                            <button className="btn-ghost" disabled style={{ gap: '8px', opacity: 0.6, cursor: 'not-allowed' }}>
+                                <Shield size={14} /> Configure Access
+                            </button>
                         </div>
                     </div>
 
-                    {isConnected && (
-                        <div className="backup-info-box">
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                                <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <Archive size={14} style={{ color: 'var(--primary)' }} /> Recent Cloud Backups
-                                </p>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                    {latestBackup ? `Last synced: ${latestBackup}` : 'No sync history'}
-                                </span>
-                            </div>
-                            
-                            <div className="backup-history-list">
-                                {backupList.length > 0 ? (
-                                    backupList.slice(0, 5).map((backup, index) => (
-                                        <div key={index} className="backup-history-item">
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)' }} />
-                                                <span style={{ fontWeight: 500 }}>{backup.key.split('/').pop()}</span>
-                                            </div>
-                                            <span style={{ color: 'var(--text-muted)' }}>
-                                                {backup.last_modified ? new Date(backup.last_modified).toLocaleDateString() : ''}
-                                            </span>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', margin: '1rem 0' }}>No backups found.</p>
-                                )}
-                            </div>
+                    {/* Fake Backup History */}
+                    <div className="backup-info-box" style={{ opacity: 0.8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                            <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Archive size={14} style={{ color: 'var(--primary)' }} /> Recent Cloud Backups (Demo)
+                            </p>
                         </div>
-                    )}
+
+                        <div className="backup-history-list">
+                            {backupList.map((backup, index) => (
+                                <div key={index} className="backup-history-item">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)' }} />
+                                        <span style={{ fontWeight: 500 }}>{backup.key.split('/').pop()}</span>
+                                    </div>
+                                    <span style={{ color: 'var(--text-muted)' }}>
+                                        {new Date(backup.last_modified).toLocaleDateString()}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.75rem', fontStyle: 'italic' }}>
+                            These are sample backup entries. Connect to cloud to manage real backups.
+                        </p>
+                    </div>
                 </div>
 
                 {/* About Section */}
@@ -432,8 +404,8 @@ const Settings = () => {
                     
                     <div className="about-modern">
                         <div className="about-branding">
-                            <div className="about-logo-placeholder">
-                                <FileText size={32} />
+                            <div className="about-logo-placeholder" style={{ background: 'transparent', boxShadow: 'none' }}>
+                                <img src="/Logo%203.png" alt="RhaegarSystems Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                             </div>
                             <div className="about-text">
                                 <h2>RhaegarSystems ERP Demo</h2>

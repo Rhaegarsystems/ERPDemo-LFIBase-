@@ -1,15 +1,15 @@
-.sheet-overlay {
+.detail-sheet-overlay {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 100;
+    z-index: 2500;
     animation: fadeIn 150ms ease-out;
 }
 
-.side-sheet {
+.detail-side-sheet {
     position: fixed;
     top: 0;
     right: 0;
@@ -18,7 +18,7 @@
     max-width: 90vw;
     background: var(--glass-bg);
     border-left: 1px solid var(--glass-border);
-    z-index: 101;
+    z-index: 2501;
     display: flex;
     flex-direction: column;
     animation: slideIn 200ms ease-out;
